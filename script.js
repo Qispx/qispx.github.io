@@ -531,3 +531,29 @@ if (sidebarLinks.length) {
   window.addEventListener('scroll', updateActiveSidebarLink, { passive: true });
   updateActiveSidebarLink();
 }
+// Delete completed daily tasks
+function deleteCompletedTasks() {
+    if (!data.tasks || data.tasks.length === 0) {
+        return;
+    }
+
+    const completedCount = data.tasks.filter(task => task.completed).length;
+
+    if (completedCount === 0) {
+        alert("There are no completed tasks to delete.");
+        return;
+    }
+
+    const confirmed = confirm(
+        `Delete ${completedCount} completed task${completedCount === 1 ? "" : "s"}?`
+    );
+
+    if (!confirmed) {
+        return;
+    }
+
+    data.tasks = data.tasks.filter(task => !task.completed);
+
+    saveData();
+    renderTasks();
+}
