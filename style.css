@@ -620,4 +620,6 @@ html {
   letter-spacing: .3px;
 }
 
-
+.task-panel > .secondary-button {
+  margin-bottom: 18px;
+}
