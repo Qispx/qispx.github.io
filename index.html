@@ -70,24 +70,38 @@
                     </div>
                     <div class="schedule-list" id="class-list"></div>
                 </section>
+<aside class="ui-panel task-panel">
+    <div class="panel-heading">
+        <div>
+            <h2>Daily Tasks</h2>
+            <div class="panel-subtitle">Add your Mini Tasks Here</div>
+        </div>
+        <span class="task-progress" id="task-progress">0 / 0</span>
+    </div>
 
-                <aside class="ui-panel task-panel">
-                    <div class="panel-heading">
-                        <div>
-                            <h2>Daily Tasks</h2>
-                            <div class="panel-subtitle">Add your Mini Tasks Here</div>
-                        </div>
-                        <span class="task-progress" id="task-progress">0 / 0</span>
-                    </div>
+    <form class="task-form" id="task-form">
+        <input 
+            type="text" 
+            id="task-input" 
+            placeholder=" " 
+            maxlength="100" 
+            autocomplete="off" 
+            required
+        >
+        <button type="submit">Add</button>
+    </form>
 
-                    <form class="task-form" id="task-form">
-                        <input type="text" id="task-input" placeholder=" " maxlength="100" autocomplete="off" required>
-                        <button type="submit">Add</button>
-                    </form>
-                    <div class="task-list" id="task-list"></div>
-                </aside>
+    <button 
+        type="button" 
+        class="secondary-button"
+        onclick="deleteCompletedTasks()"
+    >
+        Delete Completed Tasks
+    </button>
+
+    <div class="task-list" id="task-list"></div>
+</aside>
             </div>
-
 
             <section class="ui-panel homework-panel" id="homework">
                 <div class="panel-heading">
