@@ -474,27 +474,49 @@ setInterval(updateTimeRemaining, 30000);
 
 // Highlight the sidebar link for the section currently in view.
 const sidebarLinks = [...document.querySelectorAll('.sidebar a[href^="#"]')];
-const sidebarSections = sidebarLinks
-  .map(link => document.querySelector(link.getAttribute('href')))
-  .filter(Boolean);
+const content = document.querySelector('.content');
 
 function updateActiveSidebarLink() {
-  const marker = window.scrollY + 140;
-  let activeIndex = 0;
+    if (!sidebarLinks.length || !content) return;
 
-  sidebarSections.forEach((section, index) => {
-    if (section.offsetTop <= marker) activeIndex = index;
-  });
+    const contentTop = content.getBoundingClientRect().top;
+    const marker = contentTop + 140;
 
-  sidebarLinks.forEach((link, index) => {
-    link.classList.toggle('active', index === activeIndex);
-  });
+    let activeLink = sidebarLinks[0];
+
+    sidebarLinks.forEach(link => {
+        const target = document.querySelector(link.getAttribute('href'));
+
+        if (!target) return;
+
+        const targetTop = target.getBoundingClientRect().top;
+
+        if (targetTop <= marker) {
+            activeLink = link;
+        }
+    });
+
+    sidebarLinks.forEach(link => {
+        link.classList.toggle('active', link === activeLink);
+    });
 }
 
-if (sidebarLinks.length) {
-  window.addEventListener('scroll', updateActiveSidebarLink, { passive: true });
-  updateActiveSidebarLink();
+/* Update while scrolling the main content */
+if (content) {
+    content.addEventListener('scroll', updateActiveSidebarLink, {
+        passive: true
+    });
 }
+
+/* Update when clicking a sidebar link */
+sidebarLinks.forEach(link => {
+    link.addEventListener('click', () => {
+        setTimeout(updateActiveSidebarLink, 100);
+    });
+});
+
+/* Initial state */
+updateActiveSidebarLink();
 // Delete completed daily tasks
 function deleteCompletedTasks() {
     if (!tasks || tasks.length === 0) {
