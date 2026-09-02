@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palumbo Student Interface</title>
+    <link rel="stylesheet" href="style.css">
+
+</head>
+<body>
+
+    <aside class="sidebar">
+        <h2>Palumbo Student Interface</h2>
+
+        <p class="sidebar-nav-label">Jump to</p>
+        <ul>
+            <li><a href="#schedule">Daily Schedule</a></li>
+            <li><a href="#homework">Homework Tracker</a></li>
+            <li><a href="#gpa">GPA Calculator</a></li>
+            <li><a href="#q1">Freshman Year</a></li>
+            <li><a href="#q2">Sophomore Year</a></li>
+            <li><a href="#q3">Junior Year</a></li>
+            <li><a href="#q4">Senior Year</a></li>
+        </ul>
+
+        <div>
+            <h3>Unweighted GPA: <span id="unweighted-gpa">0.00</span></h3>
+            <h3>Weighted GPA: <span id="weighted-gpa">0.00</span></h3>
+        </div>
+
+        <div class="sidebar-buttons">
+            <button onclick="exportClasses()">Export Class List</button>
+            <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importClasses(event)">
+            <button onclick="document.getElementById('import-file').click()">Import Class List</button>
+        </div>
+    </aside>
+
+    <main class="content">
+
+        <!-- Daily Schedule -->
+        <section id="schedule" class="dashboard-section">
+            <div class="dashboard-hero">
+                <div class="hero-top">
+                    <div>
+                        <p class="eyebrow">Palumbo Student Interface</p>
+                        <h1>Personal Daily Schedule</h1>
+                        <div class="hero-date" id="hero-date">Loading date...</div>
+                    </div>
+                    <div class="hero-clock">
+                        <div id="clock">Loading current time...</div>
+                    </div>
+                </div>
+                <div class="compliment" id="compliment">You are awesome!</div>
+            </div>
+
+            <div class="dashboard-grid">
+                <section class="ui-panel" id="class-schedule">
+                    <div class="panel-heading">
+                        <div>
+                            <h2 id="day-name">Schedule for Today</h2>
+                        </div>
+                        <span class="day-pill" id="schedule-status">TODAY</span>
+                    </div>
+
+                    <div class="schedule-header" aria-hidden="true">
+                        <div>Class</div>
+                        <div>Start</div>
+                        <div>End</div>
+                        <div>Time Remaining</div>
+                    </div>
+                    <div class="schedule-list" id="class-list"></div>
+                </section>
+
+                <aside class="ui-panel task-panel">
+                    <div class="panel-heading">
+                        <div>
+                            <h2>Daily Tasks</h2>
+                            <div class="panel-subtitle">Add your Mini Tasks Here</div>
+                        </div>
+                        <span class="task-progress" id="task-progress">0 / 0</span>
+                    </div>
+
+                    <form class="task-form" id="task-form">
+                        <input type="text" id="task-input" placeholder=" " maxlength="100" autocomplete="off" required>
+                        <button type="submit">Add</button>
+                    </form>
+                    <div class="task-list" id="task-list"></div>
+                </aside>
+            </div>
+
+
+            <section class="ui-panel homework-panel" id="homework">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Homework Tracker</h2>
+                        <div class="panel-subtitle">Track homework locally and keep the most important work at the top.</div>
+                    </div>
+                    <span class="task-progress" id="homework-progress">0 / 0</span>
+                </div>
+
+                <form class="homework-form" id="homework-form">
+                    <label>Homework Name
+                        <input type="text" id="homework-name" maxlength="120" required placeholder=" ">
+                    </label>
+                    <label>Class
+                        <select id="homework-class" required>
+                            <option value="">Select a class</option>
+                        </select>
+                    </label>
+                    <label>Priority
+                        <select id="homework-priority" required>
+                            <option value="high">High</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="low">Low</option>
+                        </select>
+                    </label>
+                    <label>Due Date
+                        <input type="date" id="homework-due" required>
+                    </label>
+                    <button type="submit">Add Homework</button>
+                </form>
+
+                <div class="homework-list" id="homework-list"></div>
+            </section>
+
+            <section class="ui-panel schedule-editor" id="schedule-editor">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Schedule Builder</h2>
+                        <div class="panel-subtitle">Add classes the same way you add GPA classes.</div>
+                    </div>
+                </div>
+
+                <div class="mode-switcher" role="group" aria-label="Bell schedule">
+                    <button type="button" class="mode-button active" data-mode="normal" onclick="setBellMode('normal')">Normal Bell Page</button>
+                    <button type="button" class="mode-button" data-mode="hour" onclick="setBellMode('hour')">1 Hour Bell</button>
+                </div>
+
+                <form id="schedule-form">
+                    <div class="editor-grid">
+                        <label>Class Name
+                            <input type="text" id="schedule-class-name" required placeholder=" ">
+                        </label>
+
+                        <label>Teacher
+                            <input type="text" id="schedule-teacher" placeholder=" ">
+                        </label>
+
+                        <label>Days
+                            <div class="days-picker">
+                                <label class="day-check"><input type="checkbox" value="Monday"><span>Mon</span></label>
+                                <label class="day-check"><input type="checkbox" value="Tuesday"><span>Tue</span></label>
+                                <label class="day-check"><input type="checkbox" value="Wednesday"><span>Wed</span></label>
+                                <label class="day-check"><input type="checkbox" value="Thursday"><span>Thu</span></label>
+                                <label class="day-check"><input type="checkbox" value="Friday"><span>Fri</span></label>
+                                <label class="day-check"><input type="checkbox" value="Saturday"><span>Sat</span></label>
+                                <label class="day-check"><input type="checkbox" value="Sunday"><span>Sun</span></label>
+                            </div>
+                        </label>
+
+                        <label>Start Time
+                            <input type="time" id="schedule-start" required>
+                        </label>
+
+                        <label>End Time
+                            <input type="time" id="schedule-end" required>
+                        </label>
+
+                        <label class="editor-full">
+                            <span>Affected by Bell Page</span>
+                            <select id="bell-affected" onchange="toggleBellSettings()">
+                                <option value="no">Absolutely not</option>
+                                <option value="yes">Absolutely, it's school</option>
+                            </select>
+                        </label>
+
+                        <div class="bell-settings" id="bell-settings">
+                            <label>Bell Start Time
+                                <input type="time" id="bell-start">
+                            </label>
+                            <label>Bell End Time
+                                <input type="time" id="bell-end">
+                            </label>
+                            <p class="bell-note">Only used when 1 Hour Advisory is on</p>
+                        </div>
+                    </div>
+
+                    <div class="schedule-actions">
+                        <button type="submit">Add Class</button>
+                        <button type="button" class="secondary-button" onclick="clearScheduleForm()">Clear</button>
+                    </div>
+                </form>
+
+                <div class="schedule-saved" id="saved-schedule-list"></div>
+            </section>
+        </section>
+
+        <!-- GPA Calculator -->
+        <section id="gpa" class="dashboard-section">
+            <h1>GPA Calculator</h1>
+
+            <form id="add-class-form">
+                <label>
+                    Class Name:
+                    <input type="text" id="class-name" required>
+                </label>
+
+                <label>
+                    Credits:
+                    <input id="credit-hours" required>
+                </label>
+
+                <label>
+                    Number Grade:
+                    <input type="number" id="grade" min="0" max="100" required>
+                </label>
+
+                <label>
+                    Year:
+                    <select id="quarter">
+                        <option value="q1">Freshman</option>
+                        <option value="q2">Sophomore</option>
+                        <option value="q3">Junior</option>
+                        <option value="q4">Senior</option>
+                    </select>
+                </label>
+
+                <label>
+                    Class Type:
+                    <select id="class-level">
+                        <option value="normal">Normal</option>
+                        <option value="honors">Honors</option>
+                        <option value="ap">AP</option>
+                    </select>
+                </label>
+
+                <button type="submit">Add Class</button>
+            </form>
+
+            <div id="course-sections">
+                <div id="q1" class="quarter-section">
+                    <h3>Freshman Classes</h3>
+                    <ul class="course-list"></ul>
+                </div>
+
+                <div id="q2" class="quarter-section">
+                    <h3>Sophomore Classes</h3>
+                    <ul class="course-list"></ul>
+                </div>
+
+                <div id="q3" class="quarter-section">
+                    <h3>Junior Classes</h3>
+                    <ul class="course-list"></ul>
+                </div>
+
+                <div id="q4" class="quarter-section">
+                    <h3>Senior Classes</h3>
+                    <ul class="course-list"></ul>
+                </div>
+            </div>
+        </section>
+    <script src="script.js" defer></script>     
+    </main>
