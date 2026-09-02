@@ -301,23 +301,91 @@ input:focus, select:focus, button:focus-visible, a:focus-visible {
   font-size: 13px;
 }
 
+
 /* Daily tasks */
-.task-panel { min-height: 100%; }
-.task-form { display: flex; gap: 10px; max-width: none; margin: 0 0 16px; }
-.task-form input { flex: 1; min-width: 0; }
+.task-panel {
+  min-height: 100%;
+}
+
+.task-form {
+  display: flex;
+  gap: 10px;
+  max-width: none;
+  margin: 0 0 16px;
+}
+
+.task-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-form button {
+  min-width: 70px;
+  font-weight: 700;
+}
+
 .task-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 10px 12px;
+  gap: 12px;
+  min-height: 48px;
+  padding: 11px 13px;
+  border: 1px solid rgba(94,236,215,.08);
   border-radius: 9px;
   background: rgba(0,128,128,.45);
+  transition:
+    background .2s ease,
+    border-color .2s ease,
+    transform .15s ease,
+    opacity .2s ease;
 }
-.task-item input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
-.task-item span { flex: 1; overflow-wrap: anywhere; font-size: 14px; }
-.task-item.done span { color: var(--muted); text-decoration: line-through; }
-.task-empty { padding: 18px 0; color: var(--muted); font-size: 13px; }
+
+.task-item:hover {
+  background: rgba(0,163,163,.65);
+  border-color: rgba(94,236,215,.18);
+  transform: translateX(2px);
+}
+
+.task-item input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.task-item span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #f0fffd;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: .1px;
+  transition: color .2s ease;
+}
+
+.task-item.done {
+  opacity: .65;
+  background: rgba(0,128,128,.25);
+}
+
+.task-item.done span {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.task-empty {
+  padding: 22px 10px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+
 
 /* Homework */
 .homework-panel { margin-top: 20px; }
@@ -553,6 +621,12 @@ html {
     min-height: 38px;
     font-size: 14px;
     font-weight: 500;
+}
+
+.task-progress {
+  min-width: 52px;
+  font-size: 12px;
+  letter-spacing: .3px;
 }
 
 
