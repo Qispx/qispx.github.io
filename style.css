@@ -460,3 +460,11 @@ html {
 .quarter-section {
     scroll-margin-top: 24px;
 }
+.sidebar a.sub-link {
+    margin-left: 16px;
+    min-height: 38px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+
