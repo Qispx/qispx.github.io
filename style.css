@@ -1064,7 +1064,51 @@ a:focus-visible {
   .homework-item {
     grid-template-columns: 1fr;
   }
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-9);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: var(--text-xs);
+}
 
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.footer-links a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color var(--transition-base);
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.footer-divider {
+  opacity: .5;
+}
+
+.footer-version {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  opacity: .7;
+}
+
+@media (max-width: 700px) {
+  .site-footer {
+    justify-content: flex-start;
+  }
+}
   .homework-actions {
     justify-content: flex-end;
   }
