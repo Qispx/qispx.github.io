@@ -233,7 +233,7 @@ function populateHomeworkClasses() {
 
     select.innerHTML = classNames.length
         ? '<option value="">Select a class</option>'
-        : '<option value="">Add a class to your schedule first</option>';
+        : '<option value="">Add a class first</option>';
 
     classNames.forEach(name => {
         const option = document.createElement('option');
@@ -455,7 +455,7 @@ function updateTimeRemaining() {
     classList.innerHTML = '';
 
     if (!todaySchedule.length) {
-        classList.innerHTML = '<div class="schedule-empty">No classes scheduled for today. Add your classes below.</div>';
+        classList.innerHTML = '<div class="schedule-empty">No classes scheduled for today.</div>';
         return;
     }
 
