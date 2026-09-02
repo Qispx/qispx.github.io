@@ -1,0 +1,1041 @@
+:root {
+    --bg: #002222;
+    --panel: #003333;
+    --panel-2: #004242;
+    --card: #008080;
+    --card-hover: #00a3a3;
+    --accent: #5eecd7;
+    --muted: #a7d8d1;
+    --border: rgba(94, 236, 215, .18);
+    --danger: #ff8d8d;
+    --shadow: 0 4px 14px rgba(0, 0, 0, .12);
+    --radius: 12px;
+    --radius-lg: 16px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: #fff;
+}
+
+button,
+input,
+select {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* =========================
+   Layout
+========================= */
+
+.sidebar {
+    position: sticky;
+    top: 0;
+    width: 250px;
+    height: 100vh;
+    flex-shrink: 0;
+    padding: 22px 20px;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, .12);
+    overflow-y: auto;
+}
+
+.sidebar h2 {
+    margin: 0 0 22px;
+    color: var(--accent);
+    font-size: 23px;
+    line-height: 1.2;
+}
+
+.sidebar-nav-label {
+    margin: 0 0 8px 4px;
+    color: rgba(167, 216, 209, .62);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.sidebar ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.sidebar li {
+    margin: 0;
+}
+
+.sidebar a {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 13px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .1px;
+    transition:
+        background-color .2s ease,
+        border-color .2s ease,
+        color .2s ease,
+        transform .2s ease;
+}
+
+.sidebar a::before {
+    content: '';
+    width: 4px;
+    height: 4px;
+    margin-right: 11px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: .55;
+    transition:
+        width .2s ease,
+        height .2s ease,
+        opacity .2s ease;
+}
+
+.sidebar a:hover {
+    color: #fff;
+    background: rgba(94, 236, 215, .08);
+    border-color: var(--border);
+    transform: translateX(3px);
+}
+
+.sidebar a:hover::before {
+    width: 6px;
+    height: 6px;
+    opacity: 1;
+}
+
+.sidebar a.active {
+    color: var(--accent);
+    background: rgba(94, 236, 215, .12);
+    border-color: rgba(94, 236, 215, .24);
+    box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.sidebar a.active::before {
+    width: 6px;
+    height: 6px;
+    opacity: 1;
+}
+
+.sidebar a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.sidebar-gpa {
+    margin-top: 20px;
+}
+
+.sidebar h3 {
+    margin: 12px 0;
+    color: #fff;
+    font-size: 17px;
+}
+
+.sidebar h3 span {
+    color: var(--accent);
+    font-size: 20px;
+}
+
+.sidebar-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-top: 12px;
+}
+
+.sidebar-buttons button {
+    width: 100%;
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+    height: 100vh;
+    padding: 30px;
+    overflow: auto;
+    background: var(--panel-2);
+}
+
+.content h1 {
+    margin: 0 0 20px;
+    color: var(--accent);
+    font-size: 32px;
+}
+
+.content h2 {
+    margin: 0;
+    color: var(--accent);
+    font-size: 27px;
+    line-height: 1.2;
+}
+
+.dashboard-section {
+    margin-bottom: 40px;
+    scroll-margin-top: 20px;
+}
+
+#schedule {
+    margin-bottom: 24px;
+}
+
+/* =========================
+   Shared UI
+========================= */
+
+.ui-panel,
+.section-card {
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: rgba(0, 51, 51, .55);
+    box-shadow: var(--shadow);
+}
+
+.panel-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.panel-subtitle {
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.day-pill,
+.task-progress {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(94, 236, 215, .12);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+button,
+input,
+select {
+    border: 1px solid #006464;
+    border-radius: 8px;
+    padding: 10px;
+    color: var(--accent);
+    background: #006464;
+}
+
+button {
+    background: var(--card);
+    transition:
+        background .2s ease,
+        transform .15s ease;
+}
+
+button:hover {
+    background: var(--card-hover);
+}
+
+button:active {
+    transform: translateY(1px);
+}
+
+input:focus,
+select:focus,
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* =========================
+   Hero
+========================= */
+
+.dashboard-hero {
+    margin-bottom: 20px;
+    padding: 26px;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--bg);
+}
+
+.hero-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.eyebrow {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.dashboard-hero h1 {
+    margin: 0;
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.05;
+}
+
+.hero-date {
+    margin-top: 8px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.hero-clock {
+    text-align: right;
+}
+
+#clock {
+    margin: 0;
+    color: var(--accent);
+    font-size: 21px;
+    font-weight: 800;
+}
+
+.compliment {
+    margin-top: 20px;
+    color: #fff;
+    font-size: 16px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+    gap: 20px;
+}
+
+/* =========================
+   Schedule
+========================= */
+
+.schedule-list,
+.schedule-saved,
+.task-list,
+.homework-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.schedule-saved {
+    margin-top: 20px;
+}
+
+.schedule-header,
+.schedule-item {
+    display: grid;
+    grid-template-columns:
+        minmax(180px, 1.5fr)
+        minmax(100px, .7fr)
+        minmax(100px, .7fr)
+        minmax(150px, 1fr);
+    align-items: center;
+    gap: 15px;
+}
+
+.schedule-header {
+    padding: 0 15px 7px;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.schedule-item {
+    padding: 14px 15px;
+    border-radius: 8px;
+    background: var(--card);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .05);
+    transition:
+        background .2s ease,
+        transform .15s ease;
+}
+
+.schedule-item:hover {
+    background: var(--card-hover);
+    transform: translateY(-1px);
+}
+
+.schedule-item.current-class {
+    background: #006464;
+    box-shadow: 0 0 0 2px var(--accent);
+}
+
+.schedule-class-name {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.schedule-teacher {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.schedule-time,
+.schedule-remaining {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.schedule-remaining strong {
+    color: var(--accent);
+}
+
+.schedule-empty {
+    padding: 28px 15px;
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    color: var(--muted);
+    text-align: center;
+    font-size: 13px;
+}
+
+/* =========================
+   Daily Tasks
+========================= */
+
+.task-panel {
+    min-height: 100%;
+}
+
+.task-form {
+    display: flex;
+    gap: 10px;
+    max-width: none;
+    margin: 0 0 16px;
+}
+
+.task-form input {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 9px;
+    background: rgba(0, 128, 128, .45);
+}
+
+.task-item input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.task-item span {
+    flex: 1;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+}
+
+.task-item.done span {
+    color: var(--muted);
+    text-decoration: line-through;
+}
+
+.task-empty {
+    padding: 18px 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* =========================
+   Homework
+========================= */
+
+.homework-panel {
+    margin-top: 20px;
+}
+
+.homework-form {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr .8fr 1fr auto;
+    gap: 12px;
+    margin: 0 0 18px;
+    max-width: none;
+    align-items: end;
+}
+
+.homework-form label {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.homework-form input,
+.homework-form select {
+    width: 100%;
+    margin-top: 6px;
+}
+
+.homework-list {
+    gap: 10px;
+}
+
+.homework-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 13px 14px;
+    border-radius: 9px;
+    background: rgba(0, 128, 128, .45);
+}
+
+.homework-main {
+    min-width: 0;
+}
+
+.homework-name {
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.homework-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    margin-top: 5px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.homework-badge {
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-weight: 800;
+}
+
+.homework-badge.high {
+    background: rgba(255, 141, 141, .18);
+    color: #ffb0b0;
+}
+
+.homework-badge.medium {
+    background: rgba(255, 220, 130, .18);
+    color: #ffe29a;
+}
+
+.homework-badge.low {
+    background: rgba(94, 236, 215, .12);
+    color: var(--accent);
+}
+
+.homework-item.overdue {
+    box-shadow: 0 0 0 1px var(--danger);
+}
+
+.homework-item.completed {
+    opacity: .65;
+}
+
+.homework-item.completed .homework-name {
+    color: var(--muted);
+    text-decoration: line-through;
+}
+
+.homework-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.homework-actions input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.homework-empty {
+    padding: 18px 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* =========================
+   Schedule Builder
+========================= */
+
+.schedule-editor {
+    margin-top: 18px;
+}
+
+.mode-switcher {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.mode-button {
+    flex: 0 0 auto;
+}
+
+.mode-button.active {
+    background: var(--accent);
+    color: var(--bg);
+}
+
+#schedule-form {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
+
+.editor-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    align-items: start;
+    gap: 18px;
+}
+
+.editor-grid > label {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.editor-full {
+    grid-column: 1 / -1;
+}
+
+.editor-grid input,
+.editor-grid select {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 42px;
+    margin-top: 6px;
+}
+
+.days-picker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    min-height: 42px;
+    margin-top: 6px;
+    padding-top: 0;
+}
+
+.day-check {
+    position: relative;
+}
+
+.day-check input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.day-check span {
+    display: block;
+    padding: 8px 10px;
+    border: 1px solid #006464;
+    border-radius: 8px;
+    background: #006464;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.day-check input:checked + span {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 800;
+}
+
+.bell-settings {
+    display: none;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 0;
+}
+
+.bell-settings.visible {
+    display: grid;
+}
+
+.bell-settings label {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.bell-settings input {
+    width: 100%;
+    margin-top: 6px;
+}
+
+.bell-note {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.schedule-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+    padding-top: 0;
+}
+
+.secondary-button {
+    background: #006464;
+}
+
+.saved-class {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 14px;
+    border-radius: 9px;
+    background: rgba(0, 128, 128, .45);
+}
+
+.saved-class small {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.danger-button {
+    padding: 5px 0;
+    border: 0;
+    background: transparent;
+    color: var(--danger);
+    font-weight: 800;
+}
+
+.danger-button:hover {
+    background: transparent;
+    color: #ffb0b0;
+}
+
+/* =========================
+   GPA
+========================= */
+
+#add-class-form {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 18px;
+    width: 100%;
+    max-width: none;
+    margin-bottom: 28px;
+}
+
+#add-class-form label {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 0;
+    color: var(--accent);
+    font-size: 16px;
+    min-width: 0;
+}
+
+#add-class-form input,
+#add-class-form select {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 42px;
+    margin-top: 7px;
+}
+
+#add-class-form button {
+    align-self: end;
+    width: 100%;
+    min-height: 42px;
+}
+
+.quarter-section {
+    margin-top: 28px;
+    margin-bottom: 38px;
+    scroll-margin-top: 20px;
+}
+
+.quarter-section + .quarter-section {
+    margin-top: 24px;
+}
+
+.quarter-section h3 {
+    margin: 0 0 10px;
+    padding: 11px 12px;
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--accent);
+    font-size: 19px;
+}
+
+.course-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.course-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    margin: 10px 0;
+    padding: 14px;
+    border-radius: 8px;
+    background: var(--card);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .05);
+}
+
+.course-item:hover {
+    background: var(--card-hover);
+}
+
+.delete-btn {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--danger);
+    font-weight: 800;
+}
+
+.delete-btn:hover {
+    background: transparent;
+    color: #ffb0b0;
+}
+
+.empty-course-list {
+    padding: 8px 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* =========================
+   Spacing
+========================= */
+
+.content > h1 {
+    margin-bottom: 24px;
+}
+
+.hero {
+    margin-bottom: 20px;
+}
+
+.section-header {
+    margin-bottom: 14px;
+}
+
+.schedule-panel,
+.tasks-panel,
+.homework-panel,
+.builder-panel,
+.gpa-panel {
+    margin-bottom: 18px;
+}
+
+.schedule-grid,
+.task-grid {
+    gap: 12px;
+}
+
+.homework-form,
+.builder-form,
+.gpa-form {
+    gap: 12px;
+}
+
+.homework-list {
+    margin-top: 16px;
+}
+
+.task-item,
+.homework-item {
+    padding: 13px 14px;
+}
+
+.gpa-summary {
+    margin-top: 18px;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 1100px) {
+
+    #add-class-form {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    #add-class-form button {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 900px) {
+
+    .content {
+        padding: 24px 20px;
+    }
+
+    .dashboard-section {
+        margin-bottom: 32px;
+    }
+
+    #schedule {
+        margin-bottom: 20px;
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .homework-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .homework-form button {
+        grid-column: 1 / -1;
+    }
+
+    #add-class-form {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    #add-class-form button {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 700px) {
+
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        max-height: none;
+    }
+
+    .content {
+        height: auto;
+        padding: 20px;
+        overflow: visible;
+    }
+
+    .hero-top {
+        flex-direction: column;
+    }
+
+    .hero-clock {
+        text-align: left;
+    }
+
+    .editor-grid,
+    .bell-settings,
+    .homework-form,
+    #add-class-form {
+        grid-template-columns: 1fr;
+    }
+
+    .editor-full,
+    .bell-note {
+        grid-column: auto;
+    }
+
+    .schedule-header {
+        display: none;
+    }
+
+    .schedule-item {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .schedule-class-name {
+        grid-column: 1 / -1;
+    }
+
+    .schedule-remaining {
+        text-align: left;
+    }
+
+    .saved-class {
+        align-items: flex-start;
+    }
+
+    .homework-form button {
+        grid-column: auto;
+    }
+
+    .homework-item {
+        grid-template-columns: 1fr;
+    }
+
+    .homework-actions {
+        justify-content: flex-end;
+    }
+}   
