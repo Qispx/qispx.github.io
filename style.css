@@ -218,7 +218,7 @@ input:focus, select:focus, button:focus-visible, a:focus-visible {
   padding: 0 15px 7px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .08em;
 }
@@ -242,50 +242,42 @@ input:focus, select:focus, button:focus-visible, a:focus-visible {
 }
 
 .schedule-class-name {
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 1.2;
-  letter-spacing: .15px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 .schedule-teacher {
   display: block;
-  margin-top: 4px;
-  color: rgba(167,216,209,.82);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .2px;
-}
-
-.schedule-time {
-  color: #e8fffb;
-  font-size: 14px;
-  font-weight: 650;
-  letter-spacing: .2px;
-}
-
-.schedule-remaining {
-  color: rgba(232,255,251,.78);
+  margin-top: 3px;
+  color: var(--muted);
   font-size: 13px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.schedule-time,
+.schedule-remaining {
+  color: #fff;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.3;
 }
 
 .schedule-remaining strong {
   color: var(--accent);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
-.schedule-item.current-class .schedule-class-name {
-  color: #ffffff;
+.schedule-item.current-class .schedule-class-name,
+.schedule-item.current-class .schedule-time {
+  color: #fff;
 }
 
 .schedule-item.current-class .schedule-teacher {
   color: var(--muted);
-}
-
-.schedule-item.current-class .schedule-time {
-  color: #ffffff;
 }
 
 .schedule-item.current-class .schedule-remaining {
@@ -300,7 +292,6 @@ input:focus, select:focus, button:focus-visible, a:focus-visible {
   text-align: center;
   font-size: 13px;
 }
-
 
 /* Daily tasks */
 .task-panel {
