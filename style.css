@@ -1173,27 +1173,30 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 .site-footer {
-  flex-direction: column;
-  align-items: stretch;
+  flex-direction: row;
+  align-items: center;
   gap: var(--space-4);
 }
 
-.footer-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-5);
+.footer-note,
+.footer-credit {
+  color: var(--muted);
+  font-size: var(--text-xs);
 }
 
-.footer-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border);
+.footer-reset {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--danger);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.footer-reset:hover {
+  background: transparent;
+  color: #ffb0b0;
 }
 
 .footer-note {
