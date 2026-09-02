@@ -452,3 +452,11 @@ form input, form select { width: 100%; margin-top: 7px; box-sizing: border-box; 
   .dashboard-section { margin-bottom: 32px; }
   #schedule { margin-bottom: 20px; }
 }
+html {
+    scroll-behavior: smooth;
+}
+
+.dashboard-section,
+.quarter-section {
+    scroll-margin-top: 24px;
+}
