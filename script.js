@@ -120,42 +120,6 @@ document.getElementById('add-class-form').addEventListener('submit', event => {
     event.target.reset();
 });
 
-function exportClasses() {
-    const blob = new Blob([JSON.stringify(data.classes, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'Classes_GPA.json';
-    link.click();
-    URL.revokeObjectURL(url);
-}
-
-function importClasses(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-        try {
-            const imported = JSON.parse(reader.result);
-            if (!Array.isArray(imported)) throw new Error('Invalid format');
-            data.classes = imported.map((course, index) => ({
-                id: course.id ?? (Date.now() + index),
-                name: String(course.name ?? '').trim(),
-                creditHours: Number(course.creditHours),
-                grade: Number(course.grade),
-                quarter: course.quarter,
-                classLevel: course.classLevel
-            })).filter(course => course.name && Number.isFinite(course.creditHours) && course.creditHours > 0 && Number.isFinite(course.grade) && course.grade >= 0 && course.grade <= 100 && ['q1','q2','q3','q4'].includes(course.quarter) && ['normal','honors','ap'].includes(course.classLevel));
-            saveData();
-            renderClasses();
-            alert('Classes imported successfully!');
-        } catch {
-            alert('Error importing classes. Please ensure the file is correctly formatted.');
-        }
-    };
-    reader.readAsText(file);
-    event.target.value = '';
-}
 
 /* Daily tasks */
 let tasks = data.tasks;
