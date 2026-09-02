@@ -1004,7 +1004,7 @@ a:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: var(--muted);
+  color: var(--accent);
   font-size: var(--text-sm);
   font-weight: 600;
   text-decoration: none;
