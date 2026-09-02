@@ -533,11 +533,11 @@ if (sidebarLinks.length) {
 }
 // Delete completed daily tasks
 function deleteCompletedTasks() {
-    if (!data.tasks || data.tasks.length === 0) {
+    if (!tasks || tasks.length === 0) {
         return;
     }
 
-    const completedCount = data.tasks.filter(task => task.completed).length;
+    const completedCount = tasks.filter(task => task.done).length;
 
     if (completedCount === 0) {
         alert("There are no completed tasks to delete.");
@@ -552,8 +552,8 @@ function deleteCompletedTasks() {
         return;
     }
 
-    data.tasks = data.tasks.filter(task => !task.completed);
+    tasks = tasks.filter(task => !task.done);
 
-    saveData();
+    saveTasks();
     renderTasks();
 }
