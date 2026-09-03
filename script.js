@@ -1,4 +1,4 @@
-/* Local data store */
+    /* Local data store */
 const STORAGE_KEY = "studentDashboardDataV2";
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
@@ -19,7 +19,9 @@ function defaultData() {
         tasks: [],
         schedule: [],
         homework: [],
-        bellMode: "normal"
+        bellMode: "normal",
+        gpaHidden: false,
+        sat: { math: null, reading: null }
     };
 }
 
@@ -31,8 +33,16 @@ function loadData() {
             classes: Array.isArray(saved.classes) ? saved.classes : [],
             tasks: Array.isArray(saved.tasks) ? saved.tasks : [],
             schedule: Array.isArray(saved.schedule) ? saved.schedule.map(course => ({ ...course, teacher: String(course.teacher ?? '').trim() })) : [],
-            homework: Array.isArray(saved.homework) ? saved.homework : [],
-            bellMode: saved.bellMode === "hour" ? "hour" : "normal"
+            homework: Array.isArray(saved.homework) ? saved.homework.map(item => ({
+                ...item,
+                density: ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate'
+            })) : [],
+            bellMode: saved.bellMode === "hour" ? "hour" : "normal",
+            gpaHidden: Boolean(saved.gpaHidden),
+            sat: {
+                math: Number.isFinite(saved.sat?.math) ? saved.sat.math : null,
+                reading: Number.isFinite(saved.sat?.reading) ? saved.sat.reading : null
+            }
         };
     } catch {
         return defaultData();
@@ -81,8 +91,15 @@ function renderClasses() {
         counts[course.quarter]++;
         const item = document.createElement('li');
         item.className = 'course-item';
-        item.innerHTML = `<span>${escapeHtml(course.name)} - ${course.creditHours} Credits - Grade: ${course.grade}</span><button class="delete-btn" type="button">Delete</button>`;
-        item.querySelector('button').addEventListener('click', () => deleteCourse(course.id));
+        item.innerHTML = `
+            <span class="course-item-name">${escapeHtml(course.name)} - ${course.creditHours} Credits - Grade: ${course.grade}</span>
+            <div class="course-item-actions">
+                <button class="edit-btn" type="button">Edit</button>
+                <button class="delete-btn" type="button">Delete</button>
+            </div>
+        `;
+        item.querySelector('.delete-btn').addEventListener('click', () => deleteCourse(course.id));
+        item.querySelector('.edit-btn').addEventListener('click', () => enterCourseEditMode(item, course));
         list.appendChild(item);
     });
 
@@ -91,6 +108,31 @@ function renderClasses() {
         if (!count) list.innerHTML = '<li class="empty-course-list">No classes added yet.</li>';
     });
     calculateGPA();
+}
+
+function enterCourseEditMode(item, course) {
+    item.innerHTML = `
+        <div class="course-edit-form">
+            <span class="course-item-name">${escapeHtml(course.name)}</span>
+            <input type="number" class="edit-grade" value="${course.grade}" min="0" max="100">
+            <button type="button" class="save-edit-btn">Save</button>
+            <button type="button" class="secondary-button cancel-edit-btn">Cancel</button>
+        </div>
+    `;
+
+    item.querySelector('.save-edit-btn').addEventListener('click', () => {
+        const input = item.querySelector('.edit-grade');
+        const newGrade = parseFloat(input.value);
+        if (!Number.isFinite(newGrade) || newGrade < 0 || newGrade > 100) {
+            alert('Enter a valid grade from 0 to 100.');
+            return;
+        }
+        course.grade = newGrade;
+        saveData();
+        renderClasses();
+    });
+
+    item.querySelector('.cancel-edit-btn').addEventListener('click', renderClasses);
 }
 
 function deleteCourse(id) {
@@ -119,6 +161,52 @@ document.getElementById('add-class-form').addEventListener('submit', event => {
     addClass(course);
     event.target.reset();
 });
+
+/* Collapsible GPA year sections */
+function toggleQuarter(quarter) {
+    const section = document.getElementById(quarter);
+    if (section) section.classList.toggle('expanded');
+}
+
+/* GPA visibility toggle */
+function toggleGpaVisibility() {
+    data.gpaHidden = !data.gpaHidden;
+    saveData();
+    applyGpaVisibility();
+}
+
+function applyGpaVisibility() {
+    const values = document.getElementById('gpa-values');
+    const btn = document.getElementById('gpa-toggle-btn');
+    if (!values || !btn) return;
+    values.classList.toggle('hidden', data.gpaHidden);
+    btn.textContent = data.gpaHidden ? 'Show GPA' : 'Hide GPA';
+}
+
+/* SAT score tracking */
+function loadSatInputs() {
+    document.getElementById('sat-math').value = data.sat.math ?? '';
+    document.getElementById('sat-reading').value = data.sat.reading ?? '';
+    updateSatComposite(false);
+}
+
+function updateSatComposite(shouldSave = true) {
+    const mathValue = parseInt(document.getElementById('sat-math').value, 10);
+    const readingValue = parseInt(document.getElementById('sat-reading').value, 10);
+    const math = Number.isFinite(mathValue) ? mathValue : null;
+    const reading = Number.isFinite(readingValue) ? readingValue : null;
+    const composite = (math ?? 0) + (reading ?? 0);
+
+    document.getElementById('sat-composite').textContent = composite || 0;
+
+    if (shouldSave) {
+        data.sat = { math, reading };
+        saveData();
+    }
+}
+
+document.getElementById('sat-math').addEventListener('input', () => updateSatComposite(true));
+document.getElementById('sat-reading').addEventListener('input', () => updateSatComposite(true));
 
 
 /* Daily tasks */
@@ -163,8 +251,12 @@ document.getElementById('task-form').addEventListener('submit', event => {
 /* Homework tracker */
 let homework = data.homework;
 
-const priorityRank = { high: 0, medium: 1, low: 2 };
-const priorityLabel = { high: 'High', medium: 'Medium', low: 'Low' };
+/* Priority is computed automatically from the due date, density is chosen by the user */
+const priorityRank = { veryhigh: 0, high: 1, medium: 2, low: 3 };
+const priorityLabel = { veryhigh: 'Very High', high: 'High', medium: 'Medium', low: 'Low' };
+
+const densityRank = { intense: 0, heavy: 1, moderate: 2, light: 3 };
+const densityLabel = { intense: 'Intense', heavy: 'Heavy', moderate: 'Moderate', light: 'Light' };
 
 function saveHomework() {
     data.homework = homework;
@@ -183,6 +275,19 @@ function getTodayDateString() {
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const d = String(now.getDate()).padStart(2, '0');
     return `${y}-${m}-${d}`;
+}
+
+function computePriority(dueDateString) {
+    if (!dueDateString) return 'low';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(`${dueDateString}T00:00:00`);
+    const diffDays = Math.round((due - today) / 86400000);
+
+    if (diffDays <= 1) return 'veryhigh';
+    if (diffDays <= 3) return 'high';
+    if (diffDays <= 7) return 'medium';
+    return 'low';
 }
 
 function getClassNamesForHomework() {
@@ -213,8 +318,11 @@ function homeworkSort(a, b) {
     const completedCompare = Number(Boolean(a.done)) - Number(Boolean(b.done));
     if (completedCompare !== 0) return completedCompare;
 
-    const priorityCompare = (priorityRank[a.priority] ?? 1) - (priorityRank[b.priority] ?? 1);
+    const priorityCompare = priorityRank[computePriority(a.dueDate)] - priorityRank[computePriority(b.dueDate)];
     if (priorityCompare !== 0) return priorityCompare;
+
+    const densityCompare = (densityRank[a.density] ?? 2) - (densityRank[b.density] ?? 2);
+    if (densityCompare !== 0) return densityCompare;
 
     const dueCompare = (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31');
     if (dueCompare !== 0) return dueCompare;
@@ -243,6 +351,8 @@ function renderHomework() {
         row.className = `homework-item${item.done ? ' completed' : ''}${overdue ? ' overdue' : ''}`;
 
         const dueText = overdue ? `Overdue · ${formatDueDate(item.dueDate)}` : `Due ${formatDueDate(item.dueDate)}`;
+        const priority = computePriority(item.dueDate);
+        const density = ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate';
 
         row.innerHTML = `
             <div class="homework-main">
@@ -251,7 +361,8 @@ function renderHomework() {
                     <span>${escapeHtml(item.className)}</span>
                     <span>•</span>
                     <span>${escapeHtml(dueText)}</span>
-                    <span class="homework-badge ${escapeHtml(item.priority)}">${escapeHtml(priorityLabel[item.priority] || 'Medium')}</span>
+                    <span class="homework-badge ${escapeHtml(priority)}">${escapeHtml(priorityLabel[priority])}</span>
+                    <span class="homework-badge ${escapeHtml(density)}">${escapeHtml(densityLabel[density])}</span>
                 </div>
             </div>
             <div class="homework-actions">
@@ -284,7 +395,7 @@ document.getElementById('homework-form').addEventListener('submit', event => {
 
     const name = document.getElementById('homework-name').value.trim();
     const className = document.getElementById('homework-class').value;
-    const priority = document.getElementById('homework-priority').value;
+    const density = document.getElementById('homework-density').value;
     const dueDate = document.getElementById('homework-due').value;
 
     if (!name || !className || !dueDate) {
@@ -296,14 +407,14 @@ document.getElementById('homework-form').addEventListener('submit', event => {
         id: Date.now() + Math.random(),
         name,
         className,
-        priority,
+        density,
         dueDate,
         done: false
     });
 
     saveHomework();
     event.target.reset();
-    document.getElementById('homework-priority').value = 'medium';
+    document.getElementById('homework-density').value = 'moderate';
     renderHomework();
 });
 
@@ -404,6 +515,27 @@ function timeToMinutes(time) {
     return hours * 60 + minutes;
 }
 
+function timeToSeconds(time) {
+    const [hours, minutes] = time.split(':').map(Number);
+    return hours * 3600 + minutes * 60;
+}
+
+function getSecondsNow() {
+    const now = new Date();
+    return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+}
+
+function formatCountdown(totalSeconds) {
+    const clamped = Math.max(0, Math.round(totalSeconds));
+    const hours = Math.floor(clamped / 3600);
+    const minutes = Math.floor((clamped % 3600) / 60);
+    const seconds = clamped % 60;
+    if (hours > 0) {
+        return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
 function getTodaySchedule() {
     const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
     const dayName = dayNames[new Date().getDay()];
@@ -411,31 +543,56 @@ function getTodaySchedule() {
     return getEffectiveSchedule(dayName);
 }
 
+function updateCurrentClassTimer(className, remainingSeconds) {
+    const timerEl = document.getElementById('current-class-timer');
+    if (!timerEl) return;
+
+    if (className && remainingSeconds != null) {
+        timerEl.textContent = `${className}: ${formatCountdown(remainingSeconds)} left`;
+        document.title = `${formatCountdown(remainingSeconds)} · Palumbo Student Interface`;
+    } else {
+        timerEl.textContent = 'No class in session';
+        document.title = 'Palumbo Student Interface';
+    }
+}
+
 function updateTimeRemaining() {
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const currentSeconds = getSecondsNow();
     const todaySchedule = getTodaySchedule().sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
     const classList = document.getElementById('class-list');
     classList.innerHTML = '';
 
+    let currentClassName = null;
+    let currentClassRemaining = null;
+
     if (!todaySchedule.length) {
         classList.innerHTML = '<div class="schedule-empty">No classes scheduled for today.</div>';
+        updateCurrentClassTimer(null, null);
         return;
     }
 
     todaySchedule.forEach(course => {
-        const start = timeToMinutes(course.startTime);
-        const end = timeToMinutes(course.endTime);
-        const current = currentMinutes >= start && currentMinutes < end;
+        const start = timeToSeconds(course.startTime);
+        const end = timeToSeconds(course.endTime);
+        const current = currentSeconds >= start && currentSeconds < end;
         let remaining = 'Not in Session';
-        if (current) remaining = `${end - currentMinutes} min remaining`;
-        else if (currentMinutes < start) remaining = `${start - currentMinutes} min until start`;
+
+        if (current) {
+            const remainingSeconds = end - currentSeconds;
+            remaining = `${formatCountdown(remainingSeconds)} remaining`;
+            currentClassName = course.name;
+            currentClassRemaining = remainingSeconds;
+        } else if (currentSeconds < start) {
+            remaining = `${Math.ceil((start - currentSeconds) / 60)} min until start`;
+        }
 
         const row = document.createElement('div');
         row.className = `schedule-item${current ? ' current-class' : ''}`;
         row.innerHTML = `<div class="schedule-class-name">${escapeHtml(course.name)}${course.teacher ? `<small class="schedule-teacher">${escapeHtml(course.teacher)}</small>` : ''}</div><div class="schedule-time">${formatStoredTime(course.startTime)}</div><div class="schedule-time">${formatStoredTime(course.endTime)}</div><div class="schedule-remaining">${remaining}</div>`;
         classList.appendChild(row);
     });
+
+    updateCurrentClassTimer(currentClassName, currentClassRemaining);
 }
 
 const compliments = [
@@ -461,6 +618,8 @@ function updateClock() {
 /* Initial render */
 document.querySelectorAll('.mode-button').forEach(button => button.classList.toggle('active', button.dataset.mode === bellMode));
 document.getElementById('compliment').textContent = getDailyCompliment();
+applyGpaVisibility();
+loadSatInputs();
 renderClasses();
 renderTasks();
 renderHomework();
@@ -469,7 +628,7 @@ updateClock();
 document.getElementById('homework-due').min = getTodayDateString();
 updateTimeRemaining();
 setInterval(updateClock, 1000);
-setInterval(updateTimeRemaining, 30000);
+setInterval(updateTimeRemaining, 1000);
 
 
 // Highlight the sidebar link for the section currently in view.
