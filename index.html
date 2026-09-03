@@ -27,9 +27,26 @@
 
 
 
-        <div>
-            <h3>Unweighted GPA: <span id="unweighted-gpa">0.00</span></h3>
-            <h3>Weighted GPA: <span id="weighted-gpa">0.00</span></h3>
+        <div class="sidebar-gpa" id="sidebar-gpa">
+            <div class="gpa-values" id="gpa-values">
+                <h3>Unweighted GPA: <span id="unweighted-gpa">0.00</span></h3>
+                <h3>Weighted GPA: <span id="weighted-gpa">0.00</span></h3>
+            </div>
+            <button type="button" class="secondary-button gpa-toggle" id="gpa-toggle-btn" onclick="toggleGpaVisibility()">Hide GPA</button>
+
+            <h3 class="sat-composite-heading">SAT Composite: <span id="sat-composite">0</span></h3>
+        </div>
+
+        <div class="sidebar-sat">
+            <p class="sidebar-nav-label">SAT Score</p>
+            <div class="sat-inputs">
+                <label>Math
+                    <input type="number" id="sat-math" min="200" max="800" step="10" placeholder="750">
+                </label>
+                <label>Reading
+                    <input type="number" id="sat-reading" min="200" max="800" step="10" placeholder="750">
+                </label>
+            </div>
         </div>
 
     </aside>
@@ -55,14 +72,17 @@
             <div class="dashboard-grid">
                 <section class="ui-panel" id="class-schedule">
                     <div class="panel-heading">
-                        <div>
+                        <div class="panel-heading-main">
                             <h2 id="day-name">Schedule for Today</h2>
-                              <div class="mode-switcher" role="group" aria-label="Bell schedule">
-                    <button type="button" class="mode-button active" data-mode="normal" onclick="setBellMode('normal')">Normal Bell Page</button>
-                    <button type="button" class="mode-button" data-mode="hour" onclick="setBellMode('hour')">1 Hour Bell</button>
-                </div>
+                            <div class="mode-switcher" role="group" aria-label="Bell schedule">
+                                <button type="button" class="mode-button active" data-mode="normal" onclick="setBellMode('normal')">Normal Bell Page</button>
+                                <button type="button" class="mode-button" data-mode="hour" onclick="setBellMode('hour')">1 Hour Bell</button>
+                            </div>
                         </div>
-                        <span class="day-pill" id="schedule-status">TODAY</span>
+                        <div class="panel-heading-side">
+                            <div class="current-class-timer" id="current-class-timer">No class in session</div>
+                            <span class="day-pill" id="schedule-status">TODAY</span>
+                        </div>
                     </div>
 
                     <div class="schedule-header" aria-hidden="true">
@@ -124,11 +144,12 @@
                             <option value="">Select a class</option>
                         </select>
                     </label>
-                    <label>Priority
-                        <select id="homework-priority" required>
-                            <option value="high">High</option>
-                            <option value="medium" selected>Medium</option>
-                            <option value="low">Low</option>
+                    <label>Work Density
+                        <select id="homework-density" required>
+                            <option value="light">Light</option>
+                            <option value="moderate" selected>Moderate</option>
+                            <option value="heavy">Heavy</option>
+                            <option value="intense">Intense</option>
                         </select>
                     </label>
                     <label>Due Date
@@ -251,22 +272,22 @@
 
             <div id="course-sections">
                 <div id="q1" class="quarter-section">
-                    <h3>Freshman Classes</h3>
+                    <h3 onclick="toggleQuarter('q1')"><span>Freshman Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
                 </div>
 
                 <div id="q2" class="quarter-section">
-                    <h3>Sophomore Classes</h3>
+                    <h3 onclick="toggleQuarter('q2')"><span>Sophomore Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
                 </div>
 
                 <div id="q3" class="quarter-section">
-                    <h3>Junior Classes</h3>
+                    <h3 onclick="toggleQuarter('q3')"><span>Junior Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
                 </div>
 
                 <div id="q4" class="quarter-section">
-                    <h3>Senior Classes</h3>
+                    <h3 onclick="toggleQuarter('q4')"><span>Senior Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
                 </div>
             </div>
@@ -292,3 +313,5 @@
     </div>
 </footer>
     </main>
+</body>
+</html>
