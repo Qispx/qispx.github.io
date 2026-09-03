@@ -60,6 +60,26 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--card) var(--bg);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: var(--card);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--card-hover);
 }
 
 body {
@@ -173,6 +193,25 @@ a:focus-visible {
   flex-direction: column;
   background: var(--bg);
   box-shadow: 2px 0 8px rgba(0, 0, 0, .12);
+  scrollbar-width: thin;
+  scrollbar-color: var(--card) var(--bg);
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: var(--card);
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--card-hover);
 }
 
 .sidebar h2 {
