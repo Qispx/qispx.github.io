@@ -1200,8 +1200,9 @@ a:focus-visible {
 }
 
 .footer-note {
-  color: var(--muted);
-  font-size: var(--text-xs);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .footer-bottom-right {
@@ -1211,8 +1212,9 @@ a:focus-visible {
 }
 
 .footer-credit {
-  color: var(--muted);
-  font-size: var(--text-xs);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .footer-reset {
