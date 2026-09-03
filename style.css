@@ -1203,6 +1203,9 @@ a:focus-visible {
   color: var(--accent);
   font-size: var(--text-sm);
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .footer-bottom-right {
@@ -1215,6 +1218,9 @@ a:focus-visible {
   color: var(--accent);
   font-size: var(--text-sm);
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .footer-reset {
