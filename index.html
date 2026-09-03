@@ -57,6 +57,10 @@
                     <div class="panel-heading">
                         <div>
                             <h2 id="day-name">Schedule for Today</h2>
+                              <div class="mode-switcher" role="group" aria-label="Bell schedule">
+                    <button type="button" class="mode-button active" data-mode="normal" onclick="setBellMode('normal')">Normal Bell Page</button>
+                    <button type="button" class="mode-button" data-mode="hour" onclick="setBellMode('hour')">1 Hour Bell</button>
+                </div>
                         </div>
                         <span class="day-pill" id="schedule-status">TODAY</span>
                     </div>
@@ -142,11 +146,6 @@
                         <h2>Schedule Builder</h2>
                         <div class="panel-subtitle">Add classes the same way you add GPA classes.</div>
                     </div>
-                </div>
-
-                <div class="mode-switcher" role="group" aria-label="Bell schedule">
-                    <button type="button" class="mode-button active" data-mode="normal" onclick="setBellMode('normal')">Normal Bell Page</button>
-                    <button type="button" class="mode-button" data-mode="hour" onclick="setBellMode('hour')">1 Hour Bell</button>
                 </div>
 
                 <form id="schedule-form">
