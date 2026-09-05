@@ -277,16 +277,31 @@ function getTodayDateString() {
     return `${y}-${m}-${d}`;
 }
 
-function computePriority(dueDateString) {
+function computePriority(dueDateString, density = 'moderate') {
     if (!dueDateString) return 'low';
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const due = new Date(`${dueDateString}T00:00:00`);
     const diffDays = Math.round((due - today) / 86400000);
 
-    if (diffDays <= 1) return 'veryhigh';
-    if (diffDays <= 3) return 'high';
-    if (diffDays <= 7) return 'medium';
+    if (diffDays <= 0) return 'veryhigh';
+
+    const densityWeight = {
+        light: 1,
+        moderate: 2,
+        heavy: 3,
+        intense: 4
+    };
+
+    const weight = densityWeight[density] ?? 2;
+    const pressure = weight / (diffDays + 1);
+
+    if (pressure >= 1.5) return 'veryhigh';
+    if (pressure >= 0.75) return 'high';
+    if (pressure >= 0.40) return 'medium';
+
     return 'low';
 }
 
@@ -318,8 +333,9 @@ function homeworkSort(a, b) {
     const completedCompare = Number(Boolean(a.done)) - Number(Boolean(b.done));
     if (completedCompare !== 0) return completedCompare;
 
-    const priorityCompare = priorityRank[computePriority(a.dueDate)] - priorityRank[computePriority(b.dueDate)];
-    if (priorityCompare !== 0) return priorityCompare;
+  const priorityCompare =
+    priorityRank[computePriority(a.dueDate, a.density)] -
+    priorityRank[computePriority(b.dueDate, b.density)];
 
     const densityCompare = (densityRank[a.density] ?? 2) - (densityRank[b.density] ?? 2);
     if (densityCompare !== 0) return densityCompare;
@@ -351,7 +367,7 @@ function renderHomework() {
         row.className = `homework-item${item.done ? ' completed' : ''}${overdue ? ' overdue' : ''}`;
 
         const dueText = overdue ? `Overdue · ${formatDueDate(item.dueDate)}` : `Due ${formatDueDate(item.dueDate)}`;
-        const priority = computePriority(item.dueDate);
+         const priority = computePriority(item.dueDate, item.density);
         const density = ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate';
 
         row.innerHTML = `
