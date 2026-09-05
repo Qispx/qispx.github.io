@@ -377,8 +377,8 @@ function renderHomework() {
                     <span>${escapeHtml(item.className)}</span>
                     <span>•</span>
                     <span>${escapeHtml(dueText)}</span>
-                    <span class="homework-badge ${escapeHtml(priority)}">${escapeHtml(priorityLabel[priority])}</span>
-                    <span class="homework-badge ${escapeHtml(density)}">${escapeHtml(densityLabel[density])}</span>
+                    <span class="homework-badge ${escapeHtml(priority)}"> Priority: ${escapeHtml(priorityLabel[priority])}</span>
+                    <span class="homework-badge ${escapeHtml(density)}">Density: ${escapeHtml(densityLabel[density])}</span>
                 </div>
             </div>
             <div class="homework-actions">
