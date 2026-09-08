@@ -1454,3 +1454,8 @@ a:focus-visible {
     justify-content: flex-end;
   }
 }
+.homework-badge.overdue {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-weight: 600;
+}
