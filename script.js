@@ -333,9 +333,17 @@ function homeworkSort(a, b) {
     const completedCompare = Number(Boolean(a.done)) - Number(Boolean(b.done));
     if (completedCompare !== 0) return completedCompare;
 
-  const priorityCompare =
-    priorityRank[computePriority(a.dueDate, a.density)] -
-    priorityRank[computePriority(b.dueDate, b.density)];
+    // Overdue items always sort to the top, ahead of every other priority tier
+    const today = getTodayDateString();
+    const aOverdue = !a.done && a.dueDate && a.dueDate < today;
+    const bOverdue = !b.done && b.dueDate && b.dueDate < today;
+    const overdueCompare = Number(bOverdue) - Number(aOverdue);
+    if (overdueCompare !== 0) return overdueCompare;
+
+    const priorityCompare =
+        priorityRank[computePriority(a.dueDate, a.density)] -
+        priorityRank[computePriority(b.dueDate, b.density)];
+    if (priorityCompare !== 0) return priorityCompare; // <-- this was missing before
 
     const densityCompare = (densityRank[a.density] ?? 2) - (densityRank[b.density] ?? 2);
     if (densityCompare !== 0) return densityCompare;
@@ -361,46 +369,47 @@ function renderHomework() {
         return;
     }
 
-    sorted.forEach(item => {
-        const row = document.createElement('div');
-        const overdue = !item.done && item.dueDate < today;
-        row.className = `homework-item${item.done ? ' completed' : ''}${overdue ? ' overdue' : ''}`;
+sorted.forEach(item => {
+    const row = document.createElement('div');
+    const overdue = !item.done && item.dueDate < today;
+    row.className = `homework-item${item.done ? ' completed' : ''}${overdue ? ' overdue' : ''}`;
 
-        const dueText = overdue ? `Overdue · ${formatDueDate(item.dueDate)}` : `Due ${formatDueDate(item.dueDate)}`;
-         const priority = computePriority(item.dueDate, item.density);
-        const density = ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate';
+    const dueText = overdue ? `Overdue · ${formatDueDate(item.dueDate)}` : `Due ${formatDueDate(item.dueDate)}`;
+    const priority = computePriority(item.dueDate, item.density);
+    const density = ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate';
 
-        row.innerHTML = `
-            <div class="homework-main">
-                <div class="homework-name">${escapeHtml(item.name)}</div>
-                <div class="homework-meta">
-                    <span>${escapeHtml(item.className)}</span>
-                    <span>•</span>
-                    <span>${escapeHtml(dueText)}</span>
-                    <span class="homework-badge ${escapeHtml(priority)}"> Priority: ${escapeHtml(priorityLabel[priority])}</span>
-                    <span class="homework-badge ${escapeHtml(density)}">Density: ${escapeHtml(densityLabel[density])}</span>
-                </div>
+    row.innerHTML = `
+        <div class="homework-main">
+            <div class="homework-name">${escapeHtml(item.name)}</div>
+            <div class="homework-meta">
+                <span>${escapeHtml(item.className)}</span>
+                <span>•</span>
+                <span>${escapeHtml(dueText)}</span>
+                ${overdue ? '<span class="homework-badge overdue">Overdue</span>' : ''}
+                <span class="homework-badge ${escapeHtml(priority)}"> Priority: ${escapeHtml(priorityLabel[priority])}</span>
+                <span class="homework-badge ${escapeHtml(density)}">Density: ${escapeHtml(densityLabel[density])}</span>
             </div>
-            <div class="homework-actions">
-                <input type="checkbox" ${item.done ? 'checked' : ''} aria-label="Complete homework">
-                <button class="danger-button" type="button" aria-label="Delete homework">Delete</button>
-            </div>
-        `;
+        </div>
+        <div class="homework-actions">
+            <input type="checkbox" ${item.done ? 'checked' : ''} aria-label="Complete homework">
+            <button class="danger-button" type="button" aria-label="Delete homework">Delete</button>
+        </div>
+    `;
 
-        row.querySelector('input').addEventListener('change', event => {
-            item.done = event.target.checked;
-            saveHomework();
-            renderHomework();
-        });
-
-        row.querySelector('button').addEventListener('click', () => {
-            homework = homework.filter(entry => entry.id !== item.id);
-            saveHomework();
-            renderHomework();
-        });
-
-        list.appendChild(row);
+    row.querySelector('input').addEventListener('change', event => {
+        item.done = event.target.checked;
+        saveHomework();
+        renderHomework();
     });
+
+    row.querySelector('button').addEventListener('click', () => {
+        homework = homework.filter(entry => entry.id !== item.id);
+        saveHomework();
+        renderHomework();
+    });
+
+    list.appendChild(row);
+});
 
     progress.textContent = `${homework.filter(item => item.done).length} / ${homework.length}`;
     populateHomeworkClasses();
