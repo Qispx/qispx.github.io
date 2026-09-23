@@ -18,6 +18,7 @@
 <ul>
     <li><a href="#schedule">Daily Schedule</a></li>
     <li><a href="#homework">Homework Tracker</a></li>
+    <li><a href="#calendar">Assignment Calendar</a></li>
     <li><a href="#gpa">GPA Calculator</a></li>
     <li><a href="#q1" class="sub-link">Freshman Year</a></li>
     <li><a href="#q2" class="sub-link">Sophomore Year</a></li>
@@ -159,6 +160,35 @@
                 </form>
 
                 <div class="homework-list" id="homework-list"></div>
+            </section>
+
+            <!-- Assignment Calendar -->
+            <section class="ui-panel calendar-panel" id="calendar">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Assignment Calendar</h2>
+                        <div class="panel-subtitle">Every homework item from your tracker, mapped to its due date.</div>
+                    </div>
+                    <div class="calendar-nav">
+                        <button type="button" class="secondary-button calendar-nav-btn" onclick="changeCalendarMonth(-1)" aria-label="Previous month">&#8249;</button>
+                        <span id="calendar-month-label">Month Year</span>
+                        <button type="button" class="secondary-button calendar-nav-btn" onclick="changeCalendarMonth(1)" aria-label="Next month">&#8250;</button>
+                        <button type="button" class="secondary-button calendar-today-btn" onclick="goToCurrentCalendarMonth()">Today</button>
+                    </div>
+                </div>
+
+                <div class="calendar-legend">
+                    <span><i class="calendar-dot veryhigh"></i>Very High</span>
+                    <span><i class="calendar-dot high"></i>High</span>
+                    <span><i class="calendar-dot medium"></i>Medium</span>
+                    <span><i class="calendar-dot low"></i>Low</span>
+                    <span><i class="calendar-dot done"></i>Completed</span>
+                </div>
+
+                <div class="calendar-weekdays">
+                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+                <div class="calendar-grid" id="calendar-grid"></div>
             </section>
 
             <section class="ui-panel schedule-editor" id="schedule-editor">
@@ -307,7 +337,7 @@
 
         <span class="footer-note">Data is stored locally</span>
         <span class="footer-credit">Made by Johnfer Quispe · Class of 2027</span>
-        <span class="footer-version">Palumbo Student Interface v1.5.1</span>
+        <span class="footer-version">Palumbo Student Interface v1.6.0</span>
 
 
     </div>
