@@ -1,4 +1,4 @@
-    /* Local data store */
+/* Local data store */
 const STORAGE_KEY = "studentDashboardDataV2";
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
@@ -366,6 +366,7 @@ function renderHomework() {
         list.innerHTML = '<div class="homework-empty">No homework added yet. You are all caught up.</div>';
         progress.textContent = '0 / 0';
         populateHomeworkClasses();
+        renderCalendar();
         return;
     }
 
@@ -373,6 +374,7 @@ sorted.forEach(item => {
     const row = document.createElement('div');
     const overdue = !item.done && item.dueDate < today;
     row.className = `homework-item${item.done ? ' completed' : ''}${overdue ? ' overdue' : ''}`;
+    row.dataset.homeworkId = item.id;
 
     const dueText = overdue ? `Overdue · ${formatDueDate(item.dueDate)}` : `Due ${formatDueDate(item.dueDate)}`;
     const priority = computePriority(item.dueDate, item.density);
@@ -413,6 +415,7 @@ sorted.forEach(item => {
 
     progress.textContent = `${homework.filter(item => item.done).length} / ${homework.length}`;
     populateHomeworkClasses();
+    renderCalendar();
 }
 
 document.getElementById('homework-form').addEventListener('submit', event => {
@@ -442,6 +445,138 @@ document.getElementById('homework-form').addEventListener('submit', event => {
     document.getElementById('homework-density').value = 'moderate';
     renderHomework();
 });
+
+/* ==========================================================================
+   Assignment Calendar
+   Reads directly from the Homework Tracker's data (data.homework) — no
+   separate data source to maintain. Every assignment with a dueDate shows
+   up on its day, color-coded by priority / completion status.
+   ========================================================================== */
+
+let calendarViewDate = new Date();
+calendarViewDate.setDate(1);
+calendarViewDate.setHours(0, 0, 0, 0);
+
+function changeCalendarMonth(delta) {
+    calendarViewDate.setMonth(calendarViewDate.getMonth() + delta);
+    renderCalendar();
+}
+
+function goToCurrentCalendarMonth() {
+    calendarViewDate = new Date();
+    calendarViewDate.setDate(1);
+    calendarViewDate.setHours(0, 0, 0, 0);
+    renderCalendar();
+}
+
+function dateToKey(year, month, day) {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function jumpToHomeworkItem(id) {
+    const homeworkSection = document.getElementById('homework');
+    if (homeworkSection) homeworkSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    setTimeout(() => {
+        const row = document.querySelector(`.homework-item[data-homework-id="${id}"]`);
+        if (row) {
+            row.classList.add('flash');
+            setTimeout(() => row.classList.remove('flash'), 1600);
+        }
+    }, 300);
+}
+
+function renderCalendar() {
+    const grid = document.getElementById('calendar-grid');
+    const label = document.getElementById('calendar-month-label');
+    if (!grid || !label) return;
+
+    const year = calendarViewDate.getFullYear();
+    const month = calendarViewDate.getMonth();
+
+    label.textContent = calendarViewDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+    // Group homework by due date (YYYY-MM-DD)
+    const byDate = {};
+    homework.forEach(item => {
+        if (!item.dueDate) return;
+        if (!byDate[item.dueDate]) byDate[item.dueDate] = [];
+        byDate[item.dueDate].push(item);
+    });
+
+    const firstOfMonth = new Date(year, month, 1);
+    const startOffset = firstOfMonth.getDay(); // 0 = Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    const todayKey = getTodayDateString();
+
+    const cells = [];
+
+    // Leading days from previous month
+    for (let i = 0; i < startOffset; i++) {
+        const day = daysInPrevMonth - startOffset + i + 1;
+        cells.push({ day, inMonth: false, key: null });
+    }
+
+    // Days of the current month
+    for (let day = 1; day <= daysInMonth; day++) {
+        cells.push({ day, inMonth: true, key: dateToKey(year, month, day) });
+    }
+
+    // Trailing days to complete the final week
+    while (cells.length % 7 !== 0) {
+        const day = cells.length - (startOffset + daysInMonth) + 1;
+        cells.push({ day, inMonth: false, key: null });
+    }
+
+    grid.innerHTML = '';
+
+    cells.forEach(cell => {
+        const cellEl = document.createElement('div');
+        cellEl.className = 'calendar-cell' + (cell.inMonth ? '' : ' outside');
+        if (cell.key === todayKey) cellEl.classList.add('is-today');
+
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'calendar-day-number';
+        dayNumber.textContent = cell.day;
+        cellEl.appendChild(dayNumber);
+
+        const items = cell.key ? (byDate[cell.key] || []) : [];
+        if (items.length) {
+            const list = document.createElement('div');
+            list.className = 'calendar-items';
+
+            const sortedItems = [...items].sort((a, b) => {
+                const doneCompare = Number(Boolean(a.done)) - Number(Boolean(b.done));
+                if (doneCompare !== 0) return doneCompare;
+                return priorityRank[computePriority(a.dueDate, a.density)] - priorityRank[computePriority(b.dueDate, b.density)];
+            });
+
+            const maxVisible = 3;
+            sortedItems.slice(0, maxVisible).forEach(item => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                const priority = computePriority(item.dueDate, item.density);
+                chip.className = `calendar-chip ${item.done ? 'done' : priority}`;
+                chip.title = `${item.name} (${item.className})`;
+                chip.textContent = item.name;
+                chip.addEventListener('click', () => jumpToHomeworkItem(item.id));
+                list.appendChild(chip);
+            });
+
+            if (sortedItems.length > maxVisible) {
+                const more = document.createElement('div');
+                more.className = 'calendar-more';
+                more.textContent = `+${sortedItems.length - maxVisible} more`;
+                list.appendChild(more);
+            }
+
+            cellEl.appendChild(list);
+        }
+
+        grid.appendChild(cellEl);
+    });
+}
 
 /* Schedule builder — intentionally starts empty */
 let customSchedule = data.schedule;
@@ -649,6 +784,7 @@ renderClasses();
 renderTasks();
 renderHomework();
 renderSavedSchedule();
+renderCalendar();
 updateClock();
 document.getElementById('homework-due').min = getTodayDateString();
 updateTimeRemaining();
@@ -713,7 +849,7 @@ function deleteCompletedTasks() {
         alert("There are no completed tasks to delete.");
         return;
     }
-
+    
     const confirmed = confirm(
         `Delete ${completedCount} completed task${completedCount === 1 ? "" : "s"}?`
     );
