@@ -827,8 +827,8 @@ a:focus-visible {
   box-shadow: 0 0 0 1px var(--danger-bg);
 }
 .homework-badge.overdue {
-background: var(--danger-bg);
-  color: #ffb0b0;
+ background: rgba(255, 90, 90, .28);
+  color: #ff8d8d;
 }
 
 .homework-item.completed {
