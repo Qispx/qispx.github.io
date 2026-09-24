@@ -824,7 +824,7 @@ a:focus-visible {
 }
 
 .homework-item.overdue {
-  box-shadow: 0 0 0 1px var(--danger);
+  box-shadow: 0 0 0 1px var(--danger-bg);
 }
 .homework-badge.overdue {
 background: var(--danger-bg);
