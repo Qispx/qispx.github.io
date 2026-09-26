@@ -18,7 +18,7 @@
 <ul>
     <li><a href="#priority">Weekly Priorities</a></li>
     <li><a href="#schedule">Daily Schedule</a></li>
-    <li><a href="#homework">Assignment Tracker</a></li>
+    <li><a href="#homework">Homework Tracker</a></li>
     <li><a href="#calendar">Assignment Calendar</a></li>
     <li><a href="#gpa">GPA Calculator</a></li>
     <li><a href="#q1" class="sub-link">Freshman Year</a></li>
@@ -54,17 +54,20 @@
     </aside>
 
     <main class="content">
-     <div class="dashboard-hero">
+             <div class="dashboard-hero">
                 <div class="hero-top">
                     <div>
                         <h1>Palumbo Student Interface</h1>
-                        <div class="hero-date" id="hero-date">Loading date...</div>
+                          <div class="priority-meta">
+                 <div class="priority-date" id="priority-date">Loading date...</div>
+                  <div class="priority-weather" id="priority-weather">Loading weather...</div>
+                </div>
                     </div>
                     <div class="hero-clock">
                         <div id="clock">Loading current time...</div>
                     </div>
                 </div>
-                <div class="compliment" id="compliment">You are awesome!</div>
+              <div class="greeting" id="greeting">Good morning!</div>
             </div>
         <!-- What's Due / What Should I Do? -->
         <section id="priority" class="dashboard-section">
@@ -99,11 +102,11 @@
                 <div class="priority-workload">
                     <div class="priority-workload-label">
                         <span>This week</span>
-                        <span id="priority-workload-count">0 assignments</span>
+                        <span id="priority-workload-count">0 / 0 done</span>
                     </div>
                     <div class="workload-bar-track">
-                        <div class="workload-bar-overdue" id="priority-workload-overdue"></div>
                         <div class="workload-bar-fill" id="priority-workload-bar"></div>
+                        <div class="workload-bar-overdue" id="priority-workload-overdue"></div>
                     </div>
                 </div>
             </section>
