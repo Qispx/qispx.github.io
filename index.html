@@ -16,6 +16,7 @@
         <p class="sidebar-nav-label">Jump to</p>
         
 <ul>
+    <li><a href="#priority">Today's Priorities</a></li>
     <li><a href="#schedule">Daily Schedule</a></li>
     <li><a href="#homework">Homework Tracker</a></li>
     <li><a href="#calendar">Assignment Calendar</a></li>
@@ -54,12 +55,54 @@
 
     <main class="content">
 
+        <!-- What's Due / What Should I Do? -->
+        <section id="priority" class="dashboard-section">
+            <section class="ui-panel priority-panel">
+                <div class="panel-heading">
+                    <div class="panel-heading-main">
+                        <h2>Weekly Outlook</h2>
+                    </div>
+                    <div class="panel-heading-side">
+                        <span class="day-pill" id="priority-overdue-pill">All caught up</span>
+                    </div>
+                </div>
+
+                <div class="priority-insight" id="priority-insight"></div>
+
+                <div class="dropdown-section expanded" id="priority-list-section">
+                    <div class="dropdown-header" onclick="toggleDropdown('priority-list-section')">
+                        <span>Assignments Due Soon</span>
+                        <span class="dropdown-arrow">&#9656;</span>
+                    </div>
+                    <div class="dropdown-body">
+                        <div class="priority-list" id="priority-today-list"></div>
+                    </div>
+                </div>
+
+                <div class="priority-divider">
+                    <span>Coming Up</span>
+                </div>
+
+                <div class="priority-stats" id="priority-stats"></div>
+
+                <div class="priority-workload">
+                    <div class="priority-workload-label">
+                        <span>This week</span>
+                        <span id="priority-workload-count">0 assignments</span>
+                    </div>
+                    <div class="workload-bar-track">
+                        <div class="workload-bar-overdue" id="priority-workload-overdue"></div>
+                        <div class="workload-bar-fill" id="priority-workload-bar"></div>
+                    </div>
+                </div>
+            </section>
+        </section>
+
         <!-- Daily Schedule -->
         <section id="schedule" class="dashboard-section">
             <div class="dashboard-hero">
                 <div class="hero-top">
                     <div>
-                        <p class="eyebrow">Palumbo Student Interface</p>
                         <h1>Personal Daily Schedule</h1>
                         <div class="hero-date" id="hero-date">Loading date...</div>
                     </div>
@@ -82,7 +125,6 @@
                         </div>
                         <div class="panel-heading-side">
                             <div class="current-class-timer" id="current-class-timer">No class in session</div>
-                            <span class="day-pill" id="schedule-status">TODAY</span>
                         </div>
                     </div>
 
@@ -92,13 +134,20 @@
                         <div>End</div>
                         <div>Time Remaining</div>
                     </div>
-                    <div class="schedule-list" id="class-list"></div>
+                    <div class="dropdown-section expanded" id="class-list-section">
+                        <div class="dropdown-header" onclick="toggleDropdown('class-list-section')">
+                            <span>Today's Classes</span>
+                            <span class="dropdown-arrow">&#9656;</span>
+                        </div>
+                        <div class="dropdown-body">
+                            <div class="schedule-list" id="class-list"></div>
+                        </div>
+                    </div>
                 </section>
 <aside class="ui-panel task-panel">
     <div class="panel-heading">
         <div>
             <h2>Daily Tasks</h2>
-            <div class="panel-subtitle">Add your Mini Tasks Here</div>
         </div>
         <span class="task-progress" id="task-progress">0 / 0</span>
     </div>
@@ -123,7 +172,15 @@
         Delete Completed Tasks
     </button>
 
-    <div class="task-list" id="task-list"></div>
+    <div class="dropdown-section expanded" id="task-list-section">
+        <div class="dropdown-header" onclick="toggleDropdown('task-list-section')">
+            <span>Your Tasks</span>
+            <span class="dropdown-arrow">&#9656;</span>
+        </div>
+        <div class="dropdown-body">
+            <div class="task-list" id="task-list"></div>
+        </div>
+    </div>
 </aside>
             </div>
 
@@ -131,7 +188,6 @@
                 <div class="panel-heading">
                     <div>
                         <h2>Homework Tracker</h2>
-                        <div class="panel-subtitle">Track homework locally and keep the most important work at the top.</div>
                     </div>
                     <span class="task-progress" id="homework-progress">0 / 0</span>
                 </div>
@@ -153,13 +209,28 @@
                             <option value="intense">Intense</option>
                         </select>
                     </label>
+                    <label>Type
+                        <select id="homework-type" required>
+                            <option value="assignment" selected>Assignment</option>
+                            <option value="test">Test / Quiz</option>
+                            <option value="event">Event</option>
+                        </select>
+                    </label>
                     <label>Due Date
                         <input type="date" id="homework-due" required>
                     </label>
                     <button type="submit">Add Homework</button>
                 </form>
 
-                <div class="homework-list" id="homework-list"></div>
+                <div class="dropdown-section expanded" id="homework-list-section">
+                    <div class="dropdown-header" onclick="toggleDropdown('homework-list-section')">
+                        <span>Your Homework</span>
+                        <span class="dropdown-arrow">&#9656;</span>
+                    </div>
+                    <div class="dropdown-body">
+                        <div class="homework-list" id="homework-list"></div>
+                    </div>
+                </div>
             </section>
 
             <!-- Assignment Calendar -->
@@ -167,7 +238,6 @@
                 <div class="panel-heading">
                     <div>
                         <h2>Assignment Calendar</h2>
-                        <div class="panel-subtitle">Every homework item from your tracker, mapped based on due date (God this took forever)</div>
                     </div>
                     <div class="calendar-nav">
                         <button type="button" class="secondary-button calendar-nav-btn" onclick="changeCalendarMonth(-1)" aria-label="Previous month">&#8249;</button>
@@ -195,7 +265,6 @@
                 <div class="panel-heading">
                     <div>
                         <h2>Schedule Builder</h2>
-                        <div class="panel-subtitle">Add classes the same way you add GPA classes.</div>
                     </div>
                 </div>
 
@@ -254,13 +323,21 @@
                     </div>
                 </form>
 
-                <div class="schedule-saved" id="saved-schedule-list"></div>
+                <div class="dropdown-section expanded" id="saved-schedule-section">
+                    <div class="dropdown-header" onclick="toggleDropdown('saved-schedule-section')">
+                        <span>Your Classes</span>
+                        <span class="dropdown-arrow">&#9656;</span>
+                    </div>
+                    <div class="dropdown-body">
+                        <div class="schedule-saved" id="saved-schedule-list"></div>
+                    </div>
+                </div>
             </section>
         </section>
 
         <!-- GPA Calculator -->
         <section id="gpa" class="dashboard-section">
-            <h1>GPA Calculator</h1>
+            <h2>GPA Calculator</h2>
 
             <form id="add-class-form">
                 <label>
