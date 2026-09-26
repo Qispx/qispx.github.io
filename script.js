@@ -22,7 +22,8 @@ function defaultData() {
         bellMode: "normal",
         gpaHidden: false,
         sat: { math: null, reading: null },
-        lastAutoClear: null
+        lastAutoClear: null,
+        streak: { count: 0, lastDate: null }
     };
 }
 
@@ -45,7 +46,11 @@ function loadData() {
                 math: Number.isFinite(saved.sat?.math) ? saved.sat.math : null,
                 reading: Number.isFinite(saved.sat?.reading) ? saved.sat.reading : null
             },
-            lastAutoClear: typeof saved.lastAutoClear === 'string' ? saved.lastAutoClear : null
+            lastAutoClear: typeof saved.lastAutoClear === 'string' ? saved.lastAutoClear : null,
+            streak: {
+                count: Number.isFinite(saved.streak?.count) ? saved.streak.count : 0,
+                lastDate: typeof saved.streak?.lastDate === 'string' ? saved.streak.lastDate : null
+            }
         };
     } catch {
         return defaultData();
@@ -245,6 +250,7 @@ function renderTasks() {
         item.innerHTML = `<input type="checkbox" ${task.done ? 'checked' : ''} aria-label="Complete task"><span>${escapeHtml(task.text)}</span>`;
         item.querySelector('input').addEventListener('change', event => {
             task.done = event.target.checked;
+            if (event.target.checked) recordDailyActivity();
             saveTasks();
             renderTasks();
         });
@@ -298,6 +304,31 @@ function maybeAutoClearCompletedHomework() {
     saveHomework();
 
     if (hasCompleted) renderHomework();
+}
+
+/* Daily streak — counts consecutive days on which the student completed at
+   least one task or homework item. Called only when something is checked
+   off (not when unchecked), so it never counts backwards. */
+function recordDailyActivity() {
+    const today = getTodayDateString();
+    if (data.streak.lastDate === today) return;
+
+    const yesterday = addDaysToDateString(today, -1);
+    data.streak.count = data.streak.lastDate === yesterday ? data.streak.count + 1 : 1;
+    data.streak.lastDate = today;
+    saveData();
+    renderPriorityDashboard();
+}
+
+/* The stored count only advances forward; this checks whether it's still
+   "live" (activity today or yesterday) so a multi-day gap displays as 0
+   instead of a stale number. */
+function getDisplayStreak() {
+    if (!data.streak || !data.streak.lastDate) return 0;
+    const today = getTodayDateString();
+    const yesterday = addDaysToDateString(today, -1);
+    if (data.streak.lastDate === today || data.streak.lastDate === yesterday) return data.streak.count;
+    return 0;
 }
 
 function formatDueDate(dateString) {
@@ -439,6 +470,7 @@ sorted.forEach(item => {
 
     row.querySelector('input').addEventListener('change', event => {
         item.done = event.target.checked;
+        if (event.target.checked) recordDailyActivity();
         saveHomework();
         renderHomework();
     });
@@ -532,6 +564,18 @@ function urgencyBucket(diffDays) {
     return { key: 'green' };
 }
 
+/* Sunday-through-Saturday range containing today, used to scope "this
+   week's" progress bar — matches the week the Sunday auto-clear resets. */
+function getCurrentWeekRange(todayString) {
+    const today = new Date(`${todayString}T00:00:00`);
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay());
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { start: fmt(start), end: fmt(end) };
+}
+
 function renderPriorityDashboard() {
     const listEl = document.getElementById('priority-today-list');
     const statsEl = document.getElementById('priority-stats');
@@ -546,40 +590,40 @@ function renderPriorityDashboard() {
 
     const openHomework = homework.filter(item => !item.done && item.dueDate);
 
-    /* Per-class next-due-item list */
-    const classNames = getClassNamesForHomework();
+    /* Assignments Due Soon — a flat list of items that actually need
+       attention: overdue work always shows, assignments within 7 days,
+       tests/quizzes and events within 14 days. Sorted by computed priority
+       (same veryhigh/high/medium/low scale as the Homework Tracker) so the
+       most urgent work leads regardless of type. */
     listEl.innerHTML = '';
 
-    if (!classNames.length) {
-        listEl.innerHTML = '<div class="priority-empty">Add classes in the Schedule Builder to see what\'s due for each one.</div>';
+    const dueSoonItems = openHomework
+        .filter(item => {
+            const diff = daysUntil(item.dueDate, today);
+            if (diff < 0) return true;
+            return item.type === 'assignment' ? diff <= 7 : diff <= 14;
+        })
+        .sort((a, b) => {
+            const pa = priorityRank[computePriority(a.dueDate, a.density)];
+            const pb = priorityRank[computePriority(b.dueDate, b.density)];
+            if (pa !== pb) return pa - pb;
+            return a.dueDate.localeCompare(b.dueDate);
+        });
+
+    if (!dueSoonItems.length) {
+        listEl.innerHTML = '<div class="priority-empty">Nothing due soon. Nice.</div>';
     } else {
-        classNames.forEach(className => {
-            const upcoming = openHomework
-                .filter(item => item.className === className)
-                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
-
+        dueSoonItems.forEach(item => {
+            const diffDays = daysUntil(item.dueDate, today);
+            const bucket = urgencyBucket(diffDays);
             const row = document.createElement('div');
-
-            if (!upcoming) {
-                row.className = 'priority-item green';
-                row.innerHTML = `
-                    <span class="priority-item-main">
-                        <span class="priority-item-class">${escapeHtml(className)}</span>
-                        <span class="priority-item-task">No upcoming work</span>
-                    </span>
-                `;
-            } else {
-                const diffDays = daysUntil(upcoming.dueDate, today);
-                const bucket = urgencyBucket(diffDays);
-                row.className = `priority-item ${bucket.key}`;
-                row.innerHTML = `
-                    <span class="priority-item-main">
-                        <span class="priority-item-class">${escapeHtml(className)}${typeTag[upcoming.type] ? ` <span class="priority-tag priority-tag-${escapeHtml(upcoming.type)}">${typeTag[upcoming.type]}</span>` : ''}</span>
-                        <span class="priority-item-task">${escapeHtml(upcoming.name)} — ${escapeHtml(relativeDueLabel(diffDays))}</span>
-                    </span>
-                `;
-            }
-
+            row.className = `priority-item ${bucket.key}`;
+            row.innerHTML = `
+                <span class="priority-item-main">
+                    <span class="priority-item-class">${escapeHtml(item.className)}${typeTag[item.type] ? ` <span class="priority-tag priority-tag-${escapeHtml(item.type)}">${typeTag[item.type]}</span>` : ''}</span>
+                    <span class="priority-item-task">${escapeHtml(item.name)} — ${escapeHtml(relativeDueLabel(diffDays))}</span>
+                </span>
+            `;
             listEl.appendChild(row);
         });
     }
@@ -605,6 +649,10 @@ function renderPriorityDashboard() {
             <span class="priority-stat-value">${testsNext14.length}</span>
             <span class="priority-stat-label">test${testsNext14.length === 1 ? '' : 's'} in 14 days</span>
         </div>
+        <div class="priority-stat streak">
+            <span class="priority-stat-value">${getDisplayStreak()}</span>
+            <span class="priority-stat-label">day streak</span>
+        </div>
     `;
 
     if (overduePillEl) {
@@ -612,25 +660,28 @@ function renderPriorityDashboard() {
         overduePillEl.classList.toggle('overdue-pill', overdueCount > 0);
     }
 
-    /* Workload bar — assignments due in the next 7 days, with overdue work
-       shown as a red segment so it visibly eats into this week's capacity */
+    /* Weekly progress bar — tracks completion of everything due this
+       Sun-Sat week. The green fill grows as items are checked off; a red
+       segment anchored to the far end reflects overdue items still
+       outstanding; hitting 100% flips the bar to a solid "complete" green. */
     if (workloadBarEl && workloadCountEl) {
-        const maxForFullBar = 10;
-        const overduePct = Math.min(100, Math.round((overdueCount / maxForFullBar) * 100));
-        const remainingScale = Math.max(0, 100 - overduePct);
-        const normalPct = dueNext7.length === 0 ? 0 : Math.max(4, Math.min(remainingScale, Math.round((dueNext7.length / maxForFullBar) * 100)));
+        const { start: weekStart, end: weekEnd } = getCurrentWeekRange(today);
+        const thisWeekItems = homework.filter(item => item.dueDate >= weekStart && item.dueDate <= weekEnd);
+        const thisWeekTotal = thisWeekItems.length;
+        const thisWeekCompleted = thisWeekItems.filter(item => item.done).length;
+        const thisWeekOverdue = thisWeekItems.filter(item => !item.done && item.dueDate < today).length;
+        const completedPct = thisWeekTotal ? Math.round((thisWeekCompleted / thisWeekTotal) * 100) : 0;
+        const overduePct = thisWeekTotal ? Math.round((thisWeekOverdue / thisWeekTotal) * 100) : 0;
+        const isComplete = thisWeekTotal > 0 && thisWeekCompleted === thisWeekTotal;
 
+        workloadBarEl.style.width = `${completedPct}%`;
         if (workloadOverdueEl) workloadOverdueEl.style.width = `${overduePct}%`;
-        workloadBarEl.style.width = `${normalPct}%`;
-        workloadBarEl.classList.toggle('is-empty', dueNext7.length === 0 && overdueCount === 0);
-        workloadBarEl.classList.remove('level-low', 'level-medium', 'level-high');
-        if (dueNext7.length >= 7) workloadBarEl.classList.add('level-high');
-        else if (dueNext7.length >= 4) workloadBarEl.classList.add('level-medium');
-        else workloadBarEl.classList.add('level-low');
+        workloadBarEl.classList.toggle('is-empty', thisWeekTotal === 0);
+        workloadBarEl.classList.toggle('is-complete', isComplete);
 
-        workloadCountEl.textContent = overdueCount > 0
-            ? `${dueNext7.length} assignment${dueNext7.length === 1 ? '' : 's'} + ${overdueCount} overdue`
-            : `${dueNext7.length} assignment${dueNext7.length === 1 ? '' : 's'}`;
+        workloadCountEl.textContent = thisWeekTotal
+            ? `${thisWeekCompleted} / ${thisWeekTotal} done (${completedPct}%)${thisWeekOverdue > 0 ? ` · ${thisWeekOverdue} overdue` : ''}`
+            : 'Nothing due this week';
     }
 
     /* Smart insight — busiest upcoming day, or an all-clear message */
@@ -980,29 +1031,116 @@ function updateTimeRemaining() {
     updateCurrentClassTimer(currentClassName, currentClassRemaining);
 }
 
-const compliments = [
-    'You are a failure.', 'Imagine being bad at SigFigs?', 'Imagine being a NEERRRD!',
-    'You are the reason soap has instructions.', 'Your only two brain cells are fighting for last place.',
-    'You are not locked in.', "Why you smiling, ain't nothing funny here?",
-    'The closest you will come to a brainstorm is a light drizzle.',
-    "I'm still deciding whether you're the weakest link or the missing link.",
-    'I smell smoke. Were you thinking too hard again?'
-];
-function getDailyCompliment() {
-    const today = new Date();
-    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
-    return compliments[dayOfYear % compliments.length];
+const greetings = {
+    morning: [
+        'Good morning, nerd. Try not to fail before 9 AM.',
+        'Good morning! Your brain cells have officially clocked in.',
+        'Rise and shine. Unfortunately, school still exists.',
+        'Good morning! Time to pretend you slept enough.',
+        'Morning! Let’s see if those two brain cells can cooperate today.'
+    ],
+
+    afternoon: [
+        'Good afternoon! Still surviving? Impressive.',
+        'Good afternoon, nerd. You made it this far.',
+        'Afternoon already? You’re not locked in yet.',
+        'Good afternoon! The day is halfway over. Your homework isn’t.',
+        'You survived the morning. Don’t get too confident.'
+    ],
+
+    evening: [
+        'Good evening! Maybe now is a good time to do your homework.',
+        'Evening! Your assignments are still waiting for you.',
+        'Good evening, nerd. The day is ending, but the homework isn’t.',
+        'Another day survived. Academic excellence remains questionable.',
+        'Good evening! Time to lock in before tomorrow becomes today.'
+    ],
+
+    night: [
+        'Good night! You should probably be sleeping.',
+        'It’s getting late, nerd. Close the laptop.',
+        'Good night! Your brain cells have filed for overtime.',
+        'Still awake? Bold strategy.',
+        'Good night! Tomorrow’s problems can wait until tomorrow.'
+    ]
+};
+function getDailyGreeting() {
+    const hour = new Date().getHours();
+
+    let greetingsForTime;
+
+    if (hour < 12) {
+        greetingsForTime = greetings.morning;
+    } else if (hour < 17) {
+        greetingsForTime = greetings.afternoon;
+    } else if (hour < 21) {
+        greetingsForTime = greetings.evening;
+    } else {
+        greetingsForTime = greetings.night;
+    }
+
+    return greetingsForTime[
+        Math.floor(Math.random() * greetingsForTime.length)
+    ];
 }
 
 function updateClock() {
     const now = new Date();
     document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    document.getElementById('hero-date').textContent = new Intl.DateTimeFormat(undefined, { weekday:'long', month:'long', day:'numeric', year:'numeric' }).format(now);
+    const priorityDateEl = document.getElementById('priority-date');
+    if (priorityDateEl) {
+        priorityDateEl.textContent = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(now);
+    }
+}
+
+/* Weather — one client-side fetch to Open-Meteo (no API key required). Uses
+   the browser's location when granted, otherwise falls back to Philadelphia
+   since that's where Palumbo is. Refreshed every 30 minutes, not every
+   second, since weather doesn't change that fast. */
+const WEATHER_CODE_LABELS = {
+    0: 'Clear', 1: 'Mostly Clear', 2: 'Partly Cloudy', 3: 'Cloudy',
+    45: 'Foggy', 48: 'Foggy',
+    51: 'Light Drizzle', 53: 'Drizzle', 55: 'Heavy Drizzle',
+    61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
+    66: 'Freezing Rain', 67: 'Freezing Rain',
+    71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow', 77: 'Snow Grains',
+    80: 'Rain Showers', 81: 'Rain Showers', 82: 'Heavy Showers',
+    85: 'Snow Showers', 86: 'Snow Showers',
+    95: 'Thunderstorms', 96: 'Thunderstorms', 99: 'Thunderstorms'
+};
+
+async function fetchWeather(lat, lon) {
+    const weatherEl = document.getElementById('priority-weather');
+    if (!weatherEl) return;
+    try {
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Weather request failed');
+        const json = await response.json();
+        const temp = Math.round(json.current.temperature_2m);
+        const label = WEATHER_CODE_LABELS[json.current.weather_code] || 'Unknown';
+        weatherEl.textContent = `${temp}°F · ${label}`;
+    } catch {
+        weatherEl.textContent = 'Weather unavailable';
+    }
+}
+
+function loadWeather() {
+    const fallback = { lat: 39.9526, lon: -75.1652 }; // Philadelphia, PA
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => fetchWeather(position.coords.latitude, position.coords.longitude),
+            () => fetchWeather(fallback.lat, fallback.lon),
+            { timeout: 5000 }
+        );
+    } else {
+        fetchWeather(fallback.lat, fallback.lon);
+    }
 }
 
 /* Initial render */
 document.querySelectorAll('.mode-button').forEach(button => button.classList.toggle('active', button.dataset.mode === bellMode));
-document.getElementById('compliment').textContent = getDailyCompliment();
+document.getElementById('greeting').textContent = getDailyGreeting();
 applyGpaVisibility();
 loadSatInputs();
 renderClasses();
@@ -1015,9 +1153,11 @@ updateClock();
 document.getElementById('homework-due').min = getTodayDateString();
 updateTimeRemaining();
 renderPriorityDashboard();
+loadWeather();
 setInterval(updateClock, 1000);
 setInterval(updateTimeRemaining, 1000);
 setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);
+setInterval(loadWeather, 30 * 60 * 1000);
 
 
 // Highlight the sidebar link for the section currently in view.
