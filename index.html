@@ -69,7 +69,7 @@
                 </div>
               <div class="greeting" id="greeting">Good morning!</div>
             </div>
-        <!-- What's Due / What Should I Do? -->
+        <!-- What's Due / What  Should I Do? -->
         <section id="priority" class="dashboard-section">
             <section class="ui-panel priority-panel">
                 <div class="panel-heading">
@@ -79,9 +79,21 @@
                     <div class="panel-heading-side">
                         <span class="day-pill" id="priority-overdue-pill">All caught up</span>
                     </div>
+                    
                 </div>
+                
 
                 <div class="priority-insight" id="priority-insight"></div>
+                <div class="priority-workload">
+                    <div class="priority-workload-label">
+                        <span>This week</span>
+                        <span id="priority-workload-count">0 / 0 done</span>
+                    </div>
+                    <div class="workload-bar-track">
+                        <div class="workload-bar-fill" id="priority-workload-bar"></div>
+                        <div class="workload-bar-overdue" id="priority-workload-overdue"></div>
+                    </div>
+                </div>
 
                 <div class="dropdown-section expanded" id="priority-list-section">
                     <div class="dropdown-header" onclick="toggleDropdown('priority-list-section')">
@@ -99,16 +111,7 @@
 
                 <div class="priority-stats" id="priority-stats"></div>
 
-                <div class="priority-workload">
-                    <div class="priority-workload-label">
-                        <span>This week</span>
-                        <span id="priority-workload-count">0 / 0 done</span>
-                    </div>
-                    <div class="workload-bar-track">
-                        <div class="workload-bar-fill" id="priority-workload-bar"></div>
-                        <div class="workload-bar-overdue" id="priority-workload-overdue"></div>
-                    </div>
-                </div>
+                
             </section>
         </section>
 
