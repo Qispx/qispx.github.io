@@ -21,7 +21,8 @@ function defaultData() {
         homework: [],
         bellMode: "normal",
         gpaHidden: false,
-        sat: { math: null, reading: null }
+        sat: { math: null, reading: null },
+        lastAutoClear: null
     };
 }
 
@@ -35,14 +36,16 @@ function loadData() {
             schedule: Array.isArray(saved.schedule) ? saved.schedule.map(course => ({ ...course, teacher: String(course.teacher ?? '').trim() })) : [],
             homework: Array.isArray(saved.homework) ? saved.homework.map(item => ({
                 ...item,
-                density: ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate'
+                density: ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate',
+                type: ['assignment','test','event'].includes(item.type) ? item.type : 'assignment'
             })) : [],
             bellMode: saved.bellMode === "hour" ? "hour" : "normal",
             gpaHidden: Boolean(saved.gpaHidden),
             sat: {
                 math: Number.isFinite(saved.sat?.math) ? saved.sat.math : null,
                 reading: Number.isFinite(saved.sat?.reading) ? saved.sat.reading : null
-            }
+            },
+            lastAutoClear: typeof saved.lastAutoClear === 'string' ? saved.lastAutoClear : null
         };
     } catch {
         return defaultData();
@@ -152,6 +155,7 @@ function calculateGPA() {
     });
     document.getElementById('unweighted-gpa').textContent = totalCredits ? (unweighted / totalCredits).toFixed(2) : '0.00';
     document.getElementById('weighted-gpa').textContent = totalCredits ? (weighted / totalCredits).toFixed(2) : '0.00';
+    renderPriorityDashboard();
 }
 
 document.getElementById('add-class-form').addEventListener('submit', event => {
@@ -168,6 +172,13 @@ function toggleQuarter(quarter) {
     if (section) section.classList.toggle('expanded');
 }
 
+/* Generic collapsible dropdown used by every list panel (tasks, homework,
+   today's classes, saved classes, priority breakdown) */
+function toggleDropdown(id) {
+    const section = document.getElementById(id);
+    if (section) section.classList.toggle('expanded');
+}
+
 /* GPA visibility toggle */
 function toggleGpaVisibility() {
     data.gpaHidden = !data.gpaHidden;
@@ -181,6 +192,7 @@ function applyGpaVisibility() {
     if (!values || !btn) return;
     values.classList.toggle('hidden', data.gpaHidden);
     btn.textContent = data.gpaHidden ? 'Show GPA' : 'Hide GPA';
+    renderPriorityDashboard();
 }
 
 /* SAT score tracking */
@@ -208,6 +220,12 @@ function updateSatComposite(shouldSave = true) {
 document.getElementById('sat-math').addEventListener('input', () => updateSatComposite(true));
 document.getElementById('sat-reading').addEventListener('input', () => updateSatComposite(true));
 
+
+/* Schedule builder — intentionally starts empty
+   (declared early so the priority dashboard can safely reference it
+   during the very first render) */
+let customSchedule = data.schedule;
+let bellMode = data.bellMode;
 
 /* Daily tasks */
 let tasks = data.tasks;
@@ -258,9 +276,28 @@ const priorityLabel = { veryhigh: 'Very High', high: 'High', medium: 'Medium', l
 const densityRank = { intense: 0, heavy: 1, moderate: 2, light: 3 };
 const densityLabel = { intense: 'Intense', heavy: 'Heavy', moderate: 'Moderate', light: 'Light' };
 
+const typeLabel = { assignment: 'Assignment', test: 'Test / Quiz', event: 'Event' };
+const typeTag = { test: 'TEST', event: 'EVENT' };
+
 function saveHomework() {
     data.homework = homework;
     saveData();
+}
+
+/* Auto-clear completed homework every Sunday. Runs once per calendar day at
+   most (guarded by data.lastAutoClear) so it doesn't wipe things repeatedly
+   if the page is reloaded several times on a Sunday. */
+function maybeAutoClearCompletedHomework() {
+    const today = getTodayDateString();
+    if (new Date(`${today}T00:00:00`).getDay() !== 0) return;
+    if (data.lastAutoClear === today) return;
+
+    const hasCompleted = homework.some(item => item.done);
+    homework = homework.filter(item => !item.done);
+    data.lastAutoClear = today;
+    saveHomework();
+
+    if (hasCompleted) renderHomework();
 }
 
 function formatDueDate(dateString) {
@@ -367,6 +404,7 @@ function renderHomework() {
         progress.textContent = '0 / 0';
         populateHomeworkClasses();
         renderCalendar();
+        renderPriorityDashboard();
         return;
     }
 
@@ -376,7 +414,7 @@ sorted.forEach(item => {
     row.className = `homework-item${item.done ? ' completed' : ''}${overdue ? ' overdue' : ''}`;
     row.dataset.homeworkId = item.id;
 
-    const dueText = overdue ? `Overdue · ${formatDueDate(item.dueDate)}` : `Due ${formatDueDate(item.dueDate)}`;
+    const dueText = `Due ${formatDueDate(item.dueDate)}`;
     const priority = computePriority(item.dueDate, item.density);
     const density = ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate';
 
@@ -390,6 +428,7 @@ sorted.forEach(item => {
                 ${overdue ? '<span class="homework-badge overdue">Overdue</span>' : ''}
                 <span class="homework-badge ${escapeHtml(priority)}"> Priority: ${escapeHtml(priorityLabel[priority])}</span>
                 <span class="homework-badge ${escapeHtml(density)}">Density: ${escapeHtml(densityLabel[density])}</span>
+                ${item.type !== 'assignment' ? `<span class="homework-badge ${escapeHtml(item.type)}">${escapeHtml(typeLabel[item.type] || 'Assignment')}</span>` : ''}
             </div>
         </div>
         <div class="homework-actions">
@@ -416,6 +455,7 @@ sorted.forEach(item => {
     progress.textContent = `${homework.filter(item => item.done).length} / ${homework.length}`;
     populateHomeworkClasses();
     renderCalendar();
+    renderPriorityDashboard();
 }
 
 document.getElementById('homework-form').addEventListener('submit', event => {
@@ -424,6 +464,7 @@ document.getElementById('homework-form').addEventListener('submit', event => {
     const name = document.getElementById('homework-name').value.trim();
     const className = document.getElementById('homework-class').value;
     const density = document.getElementById('homework-density').value;
+    const type = document.getElementById('homework-type').value;
     const dueDate = document.getElementById('homework-due').value;
 
     if (!name || !className || !dueDate) {
@@ -436,6 +477,7 @@ document.getElementById('homework-form').addEventListener('submit', event => {
         name,
         className,
         density,
+        type: ['assignment','test','event'].includes(type) ? type : 'assignment',
         dueDate,
         done: false
     });
@@ -443,8 +485,193 @@ document.getElementById('homework-form').addEventListener('submit', event => {
     saveHomework();
     event.target.reset();
     document.getElementById('homework-density').value = 'moderate';
+    document.getElementById('homework-type').value = 'assignment';
     renderHomework();
 });
+
+/* ==========================================================================
+   What's Due / What Should I Do? — Priority Dashboard
+   Reads directly from data.homework, customSchedule and data.classes — no
+   separate data source, and no AI: just date math against what the student
+   already tracks.
+   ========================================================================== */
+
+function addDaysToDateString(dateString, days) {
+    const date = new Date(`${dateString}T00:00:00`);
+    date.setDate(date.getDate() + days);
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+}
+
+function daysUntil(dueDateString, todayString) {
+    const today = new Date(`${todayString}T00:00:00`);
+    const due = new Date(`${dueDateString}T00:00:00`);
+    return Math.round((due - today) / 86400000);
+}
+
+function relativeDueLabel(diffDays) {
+    if (diffDays < 0) return 'Overdue';
+    if (diffDays === 0) return 'Due today';
+    if (diffDays === 1) return 'Due tomorrow';
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    if (diffDays <= 6) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() + diffDays);
+        return `Due ${dayNames[d.getDay()]}`;
+    }
+    return `Due ${formatDueDate(addDaysToDateString(getTodayDateString(), diffDays))}`;
+}
+
+function urgencyBucket(diffDays) {
+    if (diffDays <= 0) return { key: 'red' };
+    if (diffDays === 1) return { key: 'orange' };
+    if (diffDays <= 4) return { key: 'yellow' };
+    return { key: 'green' };
+}
+
+function renderPriorityDashboard() {
+    const listEl = document.getElementById('priority-today-list');
+    const statsEl = document.getElementById('priority-stats');
+    const insightEl = document.getElementById('priority-insight');
+    const workloadBarEl = document.getElementById('priority-workload-bar');
+    const workloadOverdueEl = document.getElementById('priority-workload-overdue');
+    const workloadCountEl = document.getElementById('priority-workload-count');
+    const overduePillEl = document.getElementById('priority-overdue-pill');
+    if (!listEl || !statsEl) return;
+
+    const today = getTodayDateString();
+
+    const openHomework = homework.filter(item => !item.done && item.dueDate);
+
+    /* Per-class next-due-item list */
+    const classNames = getClassNamesForHomework();
+    listEl.innerHTML = '';
+
+    if (!classNames.length) {
+        listEl.innerHTML = '<div class="priority-empty">Add classes in the Schedule Builder to see what\'s due for each one.</div>';
+    } else {
+        classNames.forEach(className => {
+            const upcoming = openHomework
+                .filter(item => item.className === className)
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+
+            const row = document.createElement('div');
+
+            if (!upcoming) {
+                row.className = 'priority-item green';
+                row.innerHTML = `
+                    <span class="priority-item-main">
+                        <span class="priority-item-class">${escapeHtml(className)}</span>
+                        <span class="priority-item-task">No upcoming work</span>
+                    </span>
+                `;
+            } else {
+                const diffDays = daysUntil(upcoming.dueDate, today);
+                const bucket = urgencyBucket(diffDays);
+                row.className = `priority-item ${bucket.key}`;
+                row.innerHTML = `
+                    <span class="priority-item-main">
+                        <span class="priority-item-class">${escapeHtml(className)}${typeTag[upcoming.type] ? ` <span class="priority-tag priority-tag-${escapeHtml(upcoming.type)}">${typeTag[upcoming.type]}</span>` : ''}</span>
+                        <span class="priority-item-task">${escapeHtml(upcoming.name)} — ${escapeHtml(relativeDueLabel(diffDays))}</span>
+                    </span>
+                `;
+            }
+
+            listEl.appendChild(row);
+        });
+    }
+
+    /* Coming up stats */
+    const overdueItems = openHomework.filter(item => daysUntil(item.dueDate, today) < 0);
+    const overdueCount = overdueItems.length;
+    const dueNext7 = openHomework.filter(item => {
+        const diff = daysUntil(item.dueDate, today);
+        return diff >= 0 && diff <= 7;
+    });
+    const testsNext14 = openHomework.filter(item => {
+        const diff = daysUntil(item.dueDate, today);
+        return item.type === 'test' && diff >= 0 && diff <= 14;
+    });
+
+    statsEl.innerHTML = `
+        <div class="priority-stat">
+            <span class="priority-stat-value">${dueNext7.length}</span>
+            <span class="priority-stat-label">assignment${dueNext7.length === 1 ? '' : 's'} due in 7 days</span>
+        </div>
+        <div class="priority-stat">
+            <span class="priority-stat-value">${testsNext14.length}</span>
+            <span class="priority-stat-label">test${testsNext14.length === 1 ? '' : 's'} in 14 days</span>
+        </div>
+    `;
+
+    if (overduePillEl) {
+        overduePillEl.textContent = overdueCount > 0 ? `${overdueCount} Overdue` : 'All caught up';
+        overduePillEl.classList.toggle('overdue-pill', overdueCount > 0);
+    }
+
+    /* Workload bar — assignments due in the next 7 days, with overdue work
+       shown as a red segment so it visibly eats into this week's capacity */
+    if (workloadBarEl && workloadCountEl) {
+        const maxForFullBar = 10;
+        const overduePct = Math.min(100, Math.round((overdueCount / maxForFullBar) * 100));
+        const remainingScale = Math.max(0, 100 - overduePct);
+        const normalPct = dueNext7.length === 0 ? 0 : Math.max(4, Math.min(remainingScale, Math.round((dueNext7.length / maxForFullBar) * 100)));
+
+        if (workloadOverdueEl) workloadOverdueEl.style.width = `${overduePct}%`;
+        workloadBarEl.style.width = `${normalPct}%`;
+        workloadBarEl.classList.toggle('is-empty', dueNext7.length === 0 && overdueCount === 0);
+        workloadBarEl.classList.remove('level-low', 'level-medium', 'level-high');
+        if (dueNext7.length >= 7) workloadBarEl.classList.add('level-high');
+        else if (dueNext7.length >= 4) workloadBarEl.classList.add('level-medium');
+        else workloadBarEl.classList.add('level-low');
+
+        workloadCountEl.textContent = overdueCount > 0
+            ? `${dueNext7.length} assignment${dueNext7.length === 1 ? '' : 's'} + ${overdueCount} overdue`
+            : `${dueNext7.length} assignment${dueNext7.length === 1 ? '' : 's'}`;
+    }
+
+    /* Smart insight — busiest upcoming day, or an all-clear message */
+    if (insightEl) {
+        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const countsByDay = {};
+        dueNext7.forEach(item => {
+            if (!countsByDay[item.dueDate]) countsByDay[item.dueDate] = [];
+            countsByDay[item.dueDate].push(item);
+        });
+
+        let busiestDate = null;
+        Object.entries(countsByDay).forEach(([dateKey, items]) => {
+            if (!busiestDate || items.length > countsByDay[busiestDate].length) busiestDate = dateKey;
+        });
+
+        const todayCount = countsByDay[today]?.length ?? 0;
+        const tomorrowKey = addDaysToDateString(today, 1);
+        const tomorrowItems = countsByDay[tomorrowKey] || [];
+        const tomorrowHasTest = tomorrowItems.some(item => item.type === 'test');
+
+        if (overdueCount > 0) {
+            insightEl.className = 'priority-insight red';
+            insightEl.innerHTML = `<strong>${overdueCount} overdue item${overdueCount === 1 ? '' : 's'}</strong> — clear these first.`;
+        } else if (busiestDate && countsByDay[busiestDate].length >= 3) {
+            const busyDayName = busiestDate === today ? 'today' : dayNames[new Date(`${busiestDate}T00:00:00`).getDay()];
+            const classCount = new Set(countsByDay[busiestDate].map(item => item.className)).size;
+            insightEl.className = 'priority-insight orange';
+            insightEl.innerHTML = `<strong>Busy ${escapeHtml(busyDayName.charAt(0).toUpperCase() + busyDayName.slice(1))}</strong> — you have ${countsByDay[busiestDate].length} assignments due across ${classCount} class${classCount === 1 ? '' : 'es'}.`;
+        } else if (tomorrowItems.length) {
+            insightEl.className = 'priority-insight yellow';
+            insightEl.innerHTML = `<strong>Tomorrow</strong> — ${tomorrowItems.length} assignment${tomorrowItems.length === 1 ? '' : 's'}${tomorrowHasTest ? ' + a test' : ''}.`;
+        } else if (todayCount) {
+            insightEl.className = 'priority-insight yellow';
+            insightEl.innerHTML = `<strong>Today</strong> — ${todayCount} item${todayCount === 1 ? '' : 's'} due.`;
+        } else {
+            insightEl.className = 'priority-insight green';
+            insightEl.innerHTML = `You're clear for the next 7 days. Nice.`;
+        }
+    }
+}
 
 /* ==========================================================================
    Assignment Calendar
@@ -578,10 +805,6 @@ function renderCalendar() {
     });
 }
 
-/* Schedule builder — intentionally starts empty */
-let customSchedule = data.schedule;
-let bellMode = data.bellMode;
-
 function formatStoredTime(value) {
     if (!value) return '';
     const [h, m] = value.split(':').map(Number);
@@ -618,6 +841,7 @@ function renderSavedSchedule() {
     container.innerHTML = '';
     if (!customSchedule.length) {
         container.innerHTML = '<div class="schedule-empty">No classes added yet. Your schedule is a clean slate.</div>';
+        renderPriorityDashboard();
         return;
     }
     customSchedule.forEach(course => {
@@ -636,6 +860,7 @@ function renderSavedSchedule() {
         });
         container.appendChild(row);
     });
+    renderPriorityDashboard();
 }
 
 document.getElementById('schedule-form').addEventListener('submit', event => {
@@ -708,7 +933,7 @@ function updateCurrentClassTimer(className, remainingSeconds) {
     if (!timerEl) return;
 
     if (className && remainingSeconds != null) {
-        timerEl.textContent = `${className}: ${formatCountdown(remainingSeconds)} left`;
+        timerEl.textContent = `${className} — in session`;
         document.title = `${formatCountdown(remainingSeconds)} · Palumbo Student Interface`;
     } else {
         timerEl.textContent = 'No class in session';
@@ -782,14 +1007,17 @@ applyGpaVisibility();
 loadSatInputs();
 renderClasses();
 renderTasks();
+maybeAutoClearCompletedHomework();
 renderHomework();
 renderSavedSchedule();
 renderCalendar();
 updateClock();
 document.getElementById('homework-due').min = getTodayDateString();
 updateTimeRemaining();
+renderPriorityDashboard();
 setInterval(updateClock, 1000);
 setInterval(updateTimeRemaining, 1000);
+setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);
 
 
 // Highlight the sidebar link for the section currently in view.
