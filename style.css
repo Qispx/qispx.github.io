@@ -1861,7 +1861,7 @@ a:focus-visible {
 .workload-bar-track {
   display: flex;
   align-items: stretch;
-  height: 14px;
+  height: 25px;
   overflow: hidden;
   border-radius: var(--radius-pill);
   background: rgba(94, 236, 215, .1);
