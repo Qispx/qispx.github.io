@@ -594,7 +594,8 @@ function renderPriorityDashboard() {
        attention: overdue work always shows, assignments within 7 days,
        tests/quizzes and events within 14 days. Sorted by computed priority
        (same veryhigh/high/medium/low scale as the Homework Tracker) so the
-       most urgent work leads regardless of type. */
+       most urgent work leads regardless of type. Title is the assignment
+       name; the class it belongs to is shown as the subtext below it. */
     listEl.innerHTML = '';
 
     const dueSoonItems = openHomework
@@ -620,8 +621,8 @@ function renderPriorityDashboard() {
             row.className = `priority-item ${bucket.key}`;
             row.innerHTML = `
                 <span class="priority-item-main">
-                    <span class="priority-item-class">${escapeHtml(item.className)}${typeTag[item.type] ? ` <span class="priority-tag priority-tag-${escapeHtml(item.type)}">${typeTag[item.type]}</span>` : ''}</span>
-                    <span class="priority-item-task">${escapeHtml(item.name)} — ${escapeHtml(relativeDueLabel(diffDays))}</span>
+                    <span class="priority-item-class">${escapeHtml(item.name)}${typeTag[item.type] ? ` <span class="priority-tag priority-tag-${escapeHtml(item.type)}">${typeTag[item.type]}</span>` : ''}</span>
+                    <span class="priority-item-task">${escapeHtml(item.className)} — ${escapeHtml(relativeDueLabel(diffDays))}</span>
                 </span>
             `;
             listEl.appendChild(row);
