@@ -23,6 +23,7 @@ function defaultData() {
         gpaHidden: false,
         sat: { math: null, reading: null },
         lastAutoClear: null,
+        lastTaskReset: null,
         streak: { count: 0, lastDate: null }
     };
 }
@@ -47,6 +48,7 @@ function loadData() {
                 reading: Number.isFinite(saved.sat?.reading) ? saved.sat.reading : null
             },
             lastAutoClear: typeof saved.lastAutoClear === 'string' ? saved.lastAutoClear : null,
+            lastTaskReset: typeof saved.lastTaskReset === 'string' ? saved.lastTaskReset : null,
             streak: {
                 count: Number.isFinite(saved.streak?.count) ? saved.streak.count : 0,
                 lastDate: typeof saved.streak?.lastDate === 'string' ? saved.streak.lastDate : null
@@ -235,6 +237,19 @@ let bellMode = data.bellMode;
 /* Daily tasks */
 let tasks = data.tasks;
 function saveTasks() { data.tasks = tasks; saveData(); }
+
+/* Daily Tasks reset every day: the tasks stay, but anything checked off
+   yesterday (or earlier) becomes unchecked when a new day starts. The first
+   run only stamps today's date so nothing is unchecked unexpectedly. */
+function maybeResetDailyTasks() {
+    const today = getTodayDateString();
+    if (data.lastTaskReset === today) return;
+
+    if (data.lastTaskReset !== null) tasks.forEach(task => { task.done = false; });
+    data.lastTaskReset = today;
+    saveTasks();
+    renderTasks();
+}
 function renderTasks() {
     const list = document.getElementById('task-list');
     const progress = document.getElementById('task-progress');
@@ -1034,35 +1049,55 @@ function updateTimeRemaining() {
 
 const greetings = {
     morning: [
-        'Good morning, nerd. Try not to fail before 9 AM.',
-        'Good morning! Your brain cells have officially clocked in.',
-        'Rise and shine. Unfortunately, school still exists.',
-        'Good morning! Time to pretend you slept enough.',
-        'Morning! Let’s see if those two brain cells can cooperate today.'
+        'Good morning. Unfortunately, you have to be a functional member of society today.',
+        'Good morning, Einstein. Try not to divide by zero before homeroom.',
+        'Rise and shine, your frontal lobe has been summoned.',
+        'Good morning! Hope you got more than 3 business hours of sleep.',
+        'Morning. Your two remaining brain cells are already arguing.',
+        'Good morning. The mitochondria called. They want their ATP back.',
+        'Rise and grind, scholar. The academic opps are waiting.',
+        'Good morning! Time to put those neurons on minimum wage.',
+        'Morning, nerd. Please refrain from committing academic malpractice.',
+        'Good morning. Your alarm clock has once again defeated you.'
     ],
 
     afternoon: [
-        'Good afternoon! Still surviving? Impressive.',
-        'Good afternoon, nerd. You made it this far.',
-        'Afternoon already? You’re not locked in yet.',
-        'Good afternoon! The day is halfway over. Your homework isn’t.',
-        'You survived the morning. Don’t get too confident.'
+        'Good afternoon. Still pretending you know what’s going on?',
+        'Afternoon already? Lock in before your frontal cortex clocks out.',
+        'Good afternoon, nerd. Your academic downfall has been postponed.',
+        'You survived the morning. Statistically, that’s impressive.',
+        'Good afternoon! Half the day is gone and somehow the homework multiplied.',
+        'Afternoon. Your neurons have entered their second trimester.',
+        'Good afternoon. I hope your brain has finished buffering.',
+        'You made it this far without being academically evaporated. Respect.',
+        'Good afternoon, scholar. Please stop letting your last two brain cells carry the group project.',
+        'Afternoon already? Crazy. You still look unemployed.'
     ],
 
     evening: [
-        'Good evening! Maybe now is a good time to do your homework.',
-        'Evening! Your assignments are still waiting for you.',
-        'Good evening, nerd. The day is ending, but the homework isn’t.',
-        'Another day survived. Academic excellence remains questionable.',
-        'Good evening! Time to lock in before tomorrow becomes today.'
+        'Good evening. The sun is down, but your missing assignments are not.',
+        'Evening, nerd. The homework demons have come to collect.',
+        'Good evening! Your academic responsibilities have unfortunately followed you home.',
+        'Another beautiful evening to stare at a problem for 40 minutes and call it studying.',
+        'Good evening. Lock in before your neurons unionize.',
+        'The sun is setting. Your GPA is also feeling adventurous.',
+        'Good evening, scholar. Perhaps consider opening the document you’ve been avoiding.',
+        'Evening. Your homework has been sitting there like a Victorian orphan.',
+        'Good evening! Time to discover that “I’ll do it later” was, in fact, a lie.',
+        'Another day, another opportunity to disappoint the periodic table.'
     ],
 
     night: [
-        'Good night! You should probably be sleeping.',
-        'It’s getting late, nerd. Close the laptop.',
-        'Good night! Your brain cells have filed for overtime.',
-        'Still awake? Bold strategy.',
-        'Good night! Tomorrow’s problems can wait until tomorrow.'
+        'Good night. Your neurons are requesting unpaid leave.',
+        'It’s late, nerd. Go recharge your biological motherboard.',
+        'Good night! Close the laptop before your frontal lobe files a complaint.',
+        'Still awake? Fascinating. Your circadian rhythm has officially resigned.',
+        'Good night. Even your mitochondria are tired of carrying you.',
+        'It’s bedtime. Your two brain cells have worked enough overtime.',
+        'Good night, scholar. Tomorrow you can continue pretending you understand calculus.',
+        'Still awake? Bold strategy, considering you have school tomorrow.',
+        'Good night. Please return your brain to its charging station.',
+        'The academic council has determined that you need sleep.'
     ]
 };
 function getDailyGreeting() {
@@ -1145,6 +1180,7 @@ document.getElementById('greeting').textContent = getDailyGreeting();
 applyGpaVisibility();
 loadSatInputs();
 renderClasses();
+maybeResetDailyTasks();
 renderTasks();
 maybeAutoClearCompletedHomework();
 renderHomework();
@@ -1158,6 +1194,7 @@ loadWeather();
 setInterval(updateClock, 1000);
 setInterval(updateTimeRemaining, 1000);
 setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);
+setInterval(maybeResetDailyTasks, 60 * 1000);
 setInterval(loadWeather, 30 * 60 * 1000);
 
 
