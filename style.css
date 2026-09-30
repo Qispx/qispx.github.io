@@ -16,6 +16,12 @@
   --danger-bg: rgba(255, 141, 141, .18);
   --warn: #ffe29a;
   --warn-bg: rgba(255, 220, 130, .18);
+  --gold: #ffcf86;
+  --progress-a: var(--accent);
+  --progress-b: var(--gold);
+  --pill-dark: rgba(0, 20, 20, .55);
+  --safe: #9be9b3;
+  --safe-bg: rgba(155, 233, 179, .18);
 
   /* Elevation & radius */
   --shadow: 0 4px 14px rgba(0, 0, 0, .12);
@@ -876,16 +882,32 @@ a:focus-visible {
 
 .mode-switcher {
   display: flex;
-  gap: var(--space-2);
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--pill-dark);
 }
 
 .mode-button {
   flex: 0 0 auto;
+  min-height: 36px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.mode-button:hover {
+  background: rgba(94, 236, 215, .1);
+  color: #fff;
 }
 
 .mode-button.active {
-  background: var(--accent);
-  color: var(--bg);
+  background: rgba(94, 236, 215, .16);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(94, 236, 215, .3);
 }
 
 #schedule-form {
@@ -944,17 +966,23 @@ a:focus-visible {
 .day-check span {
   display: block;
   padding: var(--space-2) 10px;
-  border: 1px solid #006464;
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: #006464;
+  background: var(--pill-dark);
   color: var(--muted);
   cursor: pointer;
+  transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+}
+
+.day-check span:hover {
+  border-color: rgba(94, 236, 215, .35);
+  color: #fff;
 }
 
 .day-check input:checked + span {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--bg);
+  border-color: rgba(94, 236, 215, .4);
+  background: rgba(94, 236, 215, .16);
+  color: var(--accent);
   font-weight: 800;
 }
 
@@ -1861,10 +1889,10 @@ a:focus-visible {
 .workload-bar-track {
   display: flex;
   align-items: stretch;
-  height: 25px;
+  height: 20px;
   overflow: hidden;
   border-radius: var(--radius-pill);
-  background: rgba(94, 236, 215, .1);
+  background: var(--pill-dark);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, .25);
 }
 
@@ -1881,8 +1909,8 @@ a:focus-visible {
   height: 100%;
   flex: 0 0 auto;
   width: 0;
-  background: linear-gradient(90deg, var(--accent), var(--card-hover));
-  box-shadow: 0 0 8px rgba(94, 236, 215, .35);
+  background: linear-gradient(90deg, var(--progress-a), var(--progress-b));
+  box-shadow: 0 0 8px rgba(255, 207, 134, .25);
   transition: width .4s ease, background .3s ease;
 }
 
