@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palumbo Student Interface</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="v3.css">
     <link rel="icon" type="image/png" href="icon.png">
 
 </head>
@@ -18,7 +19,7 @@
 <ul>
     <li><a href="#priority">Weekly Priorities</a></li>
     <li><a href="#schedule">Daily Schedule</a></li>
-    <li><a href="#homework">Homework Tracker</a></li>
+    <li><a href="#homework">General Tracker</a></li>
     <li><a href="#calendar">Assignment Calendar</a></li>
     <li><a href="#gpa">GPA Calculator</a></li>
     <li><a href="#q1" class="sub-link">Freshman Year</a></li>
@@ -34,7 +35,7 @@
                 <h3>Unweighted GPA: <span id="unweighted-gpa">0.00</span></h3>
                 <h3>Weighted GPA: <span id="weighted-gpa">0.00</span></h3>
             </div>
-            <button type="button" class="secondary-button gpa-toggle" id="gpa-toggle-btn" onclick="toggleGpaVisibility()">Hide GPA</button>
+            <button type="button" class="secondary-button gpa-toggle" id="gpa-toggle-btn" onclick="toggleGpaVisibility()">Hide Stats</button>
 
             <h3 class="sat-composite-heading">SAT Composite: <span id="sat-composite">0</span></h3>
         </div>
@@ -43,10 +44,10 @@
             <p class="sidebar-nav-label">SAT Score</p>
             <div class="sat-inputs">
                 <label>Math
-                    <input type="number" id="sat-math" min="200" max="800" step="10" placeholder="750">
+                    <input type="number" id="sat-math" min="200" max="800" step="10" placeholder="0">
                 </label>
                 <label>Reading
-                    <input type="number" id="sat-reading" min="200" max="800" step="10" placeholder="750">
+                    <input type="number" id="sat-reading" min="200" max="800" step="10" placeholder="0">
                 </label>
             </div>
         </div>
@@ -191,7 +192,7 @@
             <section class="ui-panel homework-panel" id="homework">
                 <div class="panel-heading">
                     <div>
-                        <h2>Homework Tracker</h2>
+                        <h2>General Tracker</h2>
                     </div>
                     <span class="task-progress" id="homework-progress">0 / 0</span>
                 </div>
@@ -404,6 +405,7 @@
             </div>
         </section>
     <script src="script.js" defer></script>     
+    <script src="v3.js" defer></script>
       <footer class="site-footer">
 
     <div class="footer-links">
