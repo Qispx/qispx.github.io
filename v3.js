@@ -213,9 +213,8 @@ const S = {
       F('timing', 'Timing', 'sel', ['School year', 'School break', 'All year']),
       F('hours', 'Hours per week', 'num'), F('weeks', 'Weeks per year', 'num'), F('cont', 'Continuing in college', 'sel', ['Yes', 'No']),
       F('grades', 'Grades', 'chk', ['9', '10', '11', '12', 'Post-grad']), F('desc', 'Description', 'area', null, { mode: 'chars', max: 150 })] },
-  honors: { label: 'Honors', add: 'Add Honor', def: {}, t: i => i.name || 'New honor', s: i => i.level,
-    f: [F('name', 'Award name'), F('level', 'Recognition level', 'sel', ['School', 'Local', 'State', 'National', 'International']), F('grade', 'Grade received', 'sel', ['9', '10', '11', '12']),
-      F('year', 'Year', 'num'), F('related', 'Related activity / class'), F('desc', 'Description', 'area', null, { mode: 'chars', max: 100 }), F('notes', 'Notes', 'area')] },
+    honors: { label: 'Honors', add: 'Add Honor', def: { status: 'In Progress' }, t: i => i.name || 'New honor', s: i => i.level,
+    f: [F('name', 'Honor title'), F('level', 'Level of recognition', 'sel', ['School', 'Local', 'State', 'National', 'International']), F('grade', 'Grade level', 'sel', ['9', '10', '11', '12'])] },
   essays: { label: 'Essays', add: 'Add Essay', def: {}, t: i => `${i.college || 'Common App'} — ${i.title || 'Untitled'}`, s: i => i.status,
     f: [F('college', 'College / application', 'sel', collegeNames), F('title', 'Essay title'), F('status', 'Status', 'sel', ['Idea', 'Outlining', 'Drafting', 'Revising', 'Final', 'Submitted']),
       F('target', 'Target word count', 'num'), F('prompt', 'Prompt', 'area'), F('draft', 'Draft', 'area', null, { mode: 'words', big: true })] },
@@ -247,12 +246,14 @@ function fieldHtml(it, f) {
 
 /* Progress comes from real data, never a typed-in percentage */
 function checklist(c) {
-  const es = C.essays.filter(e => e.college === c.name);
+ const es = C.essays.filter(e => e.college === c.name);
+  const common = C.essays.filter(e => e.college === 'Common App');
+  const allFin = arr => arr.length > 0 && arr.every(x => x.status === 'Finalized');
   return [
     ['Personal information', !!(c.name && c.platform && (c.deadline || c.ea || c.ed || c.rd))],
-    ['Activities', C.activities.length > 0],
-    ['Honors', C.honors.length > 0],
-    ['Personal essay', C.essays.some(e => e.college === 'Common App' && DONE_ESSAY.includes(e.status))],
+    ['Activities finalized', allFin(C.activities)],
+    ['Honors finalized', allFin(C.honors)],
+    ['Personal essay', common.length > 0 && common.every(e => DONE_ESSAY.includes(e.status))],
     ['Recommendation request', C.recs.some(r => r.status !== 'Not Requested')],
     ['Supplemental essay', es.length > 0 && es.every(e => DONE_ESSAY.includes(e.status))],
     ['Final review', C.docs.length > 0 && C.docs.every(d => d.status === 'Done')],
@@ -293,6 +294,7 @@ const TABS = [['colleges', 'Colleges'], ['activities', 'Activities'], ['honors',
 
 function updateDerived() {
   const d = $('#col-deadlines'); if (d) d.innerHTML = deadlinesHtml();
+  const sp = $('#sec-progress'); if (sp) sp.innerHTML = secProgressInner(tab);
   $$('#college-root .col-card').forEach(card => {
     const c = C.colleges.find(i => String(i.id) === card.dataset.id), p = $('.col-progress', card);
     if (c && p) p.innerHTML = progressHtml(c);
@@ -302,6 +304,7 @@ function updateDerived() {
 
 function cardEl(sec, it, idx, n) {
   if (sec === 'activities') return activityCard(it, idx);
+  if (sec === 'honors') return honorCard(it, idx);
   const s = S[sec], d = document.createElement('details');
   const badge = sec === 'colleges' && it.category && it.category !== 'Not set' ? `<span class="school-badge ${it.category.toLowerCase()}">${it.category}</span>` : '';
   const mv = sec === 'colleges' ? '' : `<button type="button" class="secondary-button mv" data-d="-1" ${idx === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button type="button" class="secondary-button mv" data-d="1" ${idx === n - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>`;
@@ -322,7 +325,7 @@ function renderCollege() {
     <div class="ui-panel"><div class="panel-heading"><div class="panel-heading-main"><h2>College Applications</h2></div></div>
       <h3 class="sub-h">Upcoming Deadlines</h3><div id="col-deadlines">${deadlinesHtml()}</div></div>
     <div class="col-tabs">${TABS.map(([k, l]) => `<button type="button" data-tab="${k}" class="${k === tab ? 'active' : ''}">${l}</button>`).join('')}</div>
-    <section class="ui-panel" data-sec="${tab}"><div class="panel-heading"><h2>${s.label}</h2><button type="button" class="col-add">${s.add}</button></div><div class="col-list"></div></section>`;
+    <section class="ui-panel" data-sec="${tab}"><div class="panel-heading"><h2>${s.label}</h2><button type="button" class="col-add">${s.add}</button></div><div id="sec-progress" class="sec-progress">${secProgressInner(tab)}</div><div class="col-list"></div></section>`;
   const list = $('.col-list', root), arr = tab === 'colleges' ? sortedColleges() : C[tab];
   if (!arr.length) list.innerHTML = '<div class="col-empty">Nothing here yet. Use the button above to add your first one.</div>';
   arr.forEach((it, i) => list.appendChild(cardEl(tab, it, i, arr.length)));
@@ -413,7 +416,7 @@ function activityCard(it, idx) {
 function closeMenus(except) {
   $$('.act-card.menu-open', root).forEach(c => { if (c !== except) { c.classList.remove('menu-open'); $('.st-btn', c)?.setAttribute('aria-expanded', 'false'); } });
 }
-const actOf = el => { const c = el.closest('.act-card'); return c && C.activities.find(i => String(i.id) === c.dataset.id); };
+const actOf = el => { const c = el.closest('.act-card'), sec = el.closest('[data-sec]')?.dataset.sec; return c && C[sec]?.find(i => String(i.id) === c.dataset.id); };
 root.addEventListener('click', e => {
   if (e.target.closest('.act-grip')) { e.preventDefault(); return; }
   const b = e.target.closest('.st-btn');
@@ -429,6 +432,7 @@ root.addEventListener('click', e => {
     const it = actOf(o), card = o.closest('.act-card');
     if (it) {
       it.status = o.dataset.st; saveC();
+      updateDerived();
       const btn = $('.st-btn', card); btn.className = `st-btn st-${stOf(it)[1]}`; btn.innerHTML = badgeInner(it);
       $$('.st-opt', card).forEach(x => x.setAttribute('aria-checked', String(x === o)));
     }
@@ -768,6 +772,42 @@ function setSchedule(arr) {
   customSchedule = arr; data.schedule = arr; saveData();
   renderSavedSchedule(); populateHomeworkClasses(); updateTimeRemaining();
   restoring = false;
+}
+  /* ---------- Section progress bars ---------- */
+function secProgressInner(sec) {
+  const arr = C[sec] || [];
+  const rule = {
+    activities: [x => x.status === 'Finalized', 'finalized'],
+    honors: [x => x.status === 'Finalized', 'finalized'],
+    essays: [x => DONE_ESSAY.includes(x.status), 'finalized'],
+    recs: [x => x.status === 'Received', 'received'],
+    docs: [x => x.status === 'Done', 'done']
+  }[sec];
+  if (!rule || !arr.length) return '';
+  const n = arr.filter(rule[0]).length, p = Math.round(n / arr.length * 100);
+  return `<div class="col-track"><div class="col-fill" style="width:${p}%"></div></div><div class="pct">${n} of ${arr.length} ${rule[1]} · ${p}%</div>`;
+}
+
+/* ---------- Honors card: title, grade boxes, recognition boxes, status ---------- */
+function honorCard(it, idx) {
+  const s = S.honors, d = document.createElement('details'), [stLabel, stKey] = stOf(it);
+  const pills = (k, opts, cur) => `<div class="pills">${opts.map(o => `<label class="pill"><input type="radio" name="${k}-${it.id}" data-k="${k}" value="${o}"${String(cur) === o ? ' checked' : ''}><span>${o}</span></label>`).join('')}</div>`;
+  d.className = 'col-card act-card'; d.dataset.id = it.id; d.open = open.has(String(it.id));
+  d.innerHTML = `<summary>
+      <span class="act-num">${idx + 1}</span>
+      <span class="col-title">${escapeHtml(s.t(it))}</span>
+      <span class="st-wrap"><button type="button" class="st-btn st-${stKey}" aria-haspopup="menu" aria-expanded="false">${badgeInner(it)}</button>
+        <div class="st-menu" role="menu">${ST.map(([l, k]) => `<button type="button" class="st-opt" role="menuitemradio" aria-checked="${l === stLabel}" data-st="${l}"><i class="st-dot d-${k}"></i>${l}${CHECK}</button>`).join('')}</div></span>
+      <span class="col-sum">${escapeHtml(s.s(it) || '')}</span>
+      <span class="col-actions"><button type="button" class="danger-button del">Delete</button></span>
+    </summary>
+    <div class="col-body act-body">
+      <label class="act-f"><span>Honor title</span><input type="text" data-k="name" maxlength="100" value="${escapeHtml(it.name || '')}"></label>
+      <div class="act-line"><span class="act-lbl">Grade</span>${pills('grade', ['9', '10', '11', '12'], it.grade)}</div>
+      <div class="act-line"><span class="act-lbl">Level</span>${pills('level', ['School', 'Local', 'State', 'National', 'International'], it.level)}</div>
+    </div>`;
+  d.addEventListener('toggle', () => d.open ? open.add(String(it.id)) : open.delete(String(it.id)));
+  return d;
 }
 
 /* Preview panel at the top of the builder page (Week / Day / List) */
