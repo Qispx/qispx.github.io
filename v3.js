@@ -207,11 +207,12 @@ const S = {
     f: [F('name', 'College name'), F('category', 'School Type', 'sel', ['Not set', 'Reach', 'Target', 'Safety']), F('platform', 'Application platform'), F('deadline', 'Application deadline', 'date'), F('ea', 'Early Action deadline', 'date'), F('ed', 'Early Decision deadline', 'date'), F('rd', 'Regular Decision deadline', 'date'),
       F('major', 'Intended major'), F('status', 'Application status', 'sel', ['Researching', 'Planning', 'Not Started', 'In Progress', 'Submitted', 'Accepted', 'Waitlisted', 'Denied']),
       F('website', 'Website'), F('aid', 'Financial aid info'), F('scholar', 'Scholarship info'), F('notes', 'Notes', 'area')] },
-  activities: { label: 'Extracurricular Activities', add: 'Add Activity', def: { grades: [] }, t: i => i.org || 'New activity', s: i => i.type,
-    f: [F('type', 'Activity type', 'sel', ['Academic', 'Art', 'Athletics', 'Career-oriented', 'Community Service', 'Computer/Technology', 'Family Responsibilities', 'Internship', 'Journalism/Publication', 'Music', 'Research', 'Student Government', 'Theater', 'Work', 'Other']),
-      F('org', 'Organization name'), F('position', 'Position / leadership'), F('timing', 'Participation timing', 'sel', ['During school year', 'During school break', 'All year']),
-      F('hours', 'Hours per week', 'num'), F('weeks', 'Weeks per year', 'num'), F('cont', 'Continue in college?', 'sel', ['Yes', 'No']),
-      F('grades', 'Grades participated', 'chk', ['9', '10', '11', '12', 'Post-graduate']), F('desc', 'Description', 'area', null, { mode: 'chars', max: 150 })] },
+    activities: { label: 'Extracurricular Activities', add: 'Add Activity', def: { grades: [], status: 'In Progress' }, t: i => i.org || 'New activity', s: i => i.type,
+    f: [F('type', 'Type', 'sel', ['Academic', 'Art', 'Athletics', 'Career-oriented', 'Community Service', 'Computer/Technology', 'Family Responsibilities', 'Internship', 'Journalism/Publication', 'Music', 'Research', 'Student Government', 'Theater', 'Work', 'Other']),
+      F('org', 'Organization', 'text', null, { mode: 'chars', max: 100 }), F('position', 'Position or leadership', 'text', null, { mode: 'chars', max: 50 }),
+      F('timing', 'Timing', 'sel', ['School year', 'School break', 'All year']),
+      F('hours', 'Hours per week', 'num'), F('weeks', 'Weeks per year', 'num'), F('cont', 'Continuing in college', 'sel', ['Yes', 'No']),
+      F('grades', 'Grades', 'chk', ['9', '10', '11', '12', 'Post-grad']), F('desc', 'Description', 'area', null, { mode: 'chars', max: 150 })] },
   honors: { label: 'Honors', add: 'Add Honor', def: {}, t: i => i.name || 'New honor', s: i => i.level,
     f: [F('name', 'Award name'), F('level', 'Recognition level', 'sel', ['School', 'Local', 'State', 'National', 'International']), F('grade', 'Grade received', 'sel', ['9', '10', '11', '12']),
       F('year', 'Year', 'num'), F('related', 'Related activity / class'), F('desc', 'Description', 'area', null, { mode: 'chars', max: 100 }), F('notes', 'Notes', 'area')] },
@@ -228,7 +229,7 @@ Object.values(S).forEach(s => s.f.forEach(f => { if (f.t === 'sel') s.def[f.k] ?
 
 function countText(it, f) {
   const c = f.c, v = it[f.k] || '';
-  if (c.mode === 'chars') return `${v.length} / ${c.max} characters`;
+  if (c.mode === 'chars') return `${v.length} of ${c.max} characters`;
   const t = Number(it.target) || 0;
   return `${wc(v)} / ${t || '—'} words`;
 }
@@ -300,6 +301,7 @@ function updateDerived() {
 }
 
 function cardEl(sec, it, idx, n) {
+  if (sec === 'activities') return activityCard(it, idx);
   const s = S[sec], d = document.createElement('details');
   const badge = sec === 'colleges' && it.category && it.category !== 'Not set' ? `<span class="school-badge ${it.category.toLowerCase()}">${it.category}</span>` : '';
   const mv = sec === 'colleges' ? '' : `<button type="button" class="secondary-button mv" data-d="-1" ${idx === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button type="button" class="secondary-button mv" data-d="1" ${idx === n - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>`;
@@ -362,6 +364,164 @@ function onEdit(e) {
 }
 root.addEventListener('input', onEdit);
 root.addEventListener('change', onEdit);
+  /* ---------- Activities: Common App-style cards, status menu, drag to reorder ---------- */
+const ST = [['In Progress', 'prog'], ['Under Review', 'rev'], ['Finalized', 'fin']];
+const stOf = it => ST.find(x => x[0] === it.status) || ST[0];
+const SVG = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const CHEV = SVG('<path d="M6 9l6 6 6-6"/>').replace('<svg', '<svg class="st-chev"');
+const CHECK = SVG('<path d="M5 12l5 5L20 7"/>').replace('<svg', '<svg class="st-check"');
+const GRIP = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+const badgeInner = it => `<i class="st-dot"></i>${stOf(it)[0]}${CHEV}`;
+const normT = v => ({ 'During school year': 'School year', 'During school break': 'School break' })[v] || v;
+const hasGrade = (it, g) => (it.grades || []).some(x => x === g || (g === 'Post-grad' && x === 'Post-graduate'));
+const totalText = (h, w) => `= ${(Number(h) || 0) * (Number(w) || 0)} hrs/yr`;
+
+function activityCard(it, idx) {
+  const s = S.activities, d = document.createElement('details'), [stLabel, stKey] = stOf(it);
+  const fd = k => s.f.find(f => f.k === k);
+  const fld = (k, label, area) => {
+    const f = fd(k), v = escapeHtml(it[k] || '');
+    const ctl = area ? `<textarea data-k="${k}" maxlength="${f.c.max}">${v}</textarea>` : `<input type="text" data-k="${k}" maxlength="${f.c.max}" value="${v}">`;
+    return `<label class="act-f"><span>${label}</span>${ctl}<small class="wc${isOver(it, f) ? ' over' : ''}" data-wc="${k}">${countText(it, f)}</small></label>`;
+  };
+  const step = (k, unit, max) => `<div class="stepper"><button type="button" class="step" data-step="-1" aria-label="Decrease ${unit}">&minus;</button><input type="number" data-k="${k}" min="0" max="${max}" placeholder="0" aria-label="${unit}" value="${escapeHtml(it[k] ?? '')}"><button type="button" class="step" data-step="1" aria-label="Increase ${unit}">+</button></div><span class="unit">${unit}</span>`;
+  let types = fd('type').o; if (it.type && !types.includes(it.type)) types = [...types, it.type];
+  d.className = 'col-card act-card'; d.dataset.id = it.id; d.open = open.has(String(it.id));
+  d.innerHTML = `<summary>
+      <button type="button" class="act-grip" aria-label="Reorder activity. Drag, or use the up and down arrow keys">${GRIP}</button>
+      <span class="act-num">${idx + 1}</span>
+      <span class="col-title">${escapeHtml(s.t(it))}</span>
+      <span class="st-wrap"><button type="button" class="st-btn st-${stKey}" aria-haspopup="menu" aria-expanded="false">${badgeInner(it)}</button>
+        <div class="st-menu" role="menu">${ST.map(([l, k]) => `<button type="button" class="st-opt" role="menuitemradio" aria-checked="${l === stLabel}" data-st="${l}"><i class="st-dot d-${k}"></i>${l}${CHECK}</button>`).join('')}</div></span>
+      <span class="col-sum">${escapeHtml(s.s(it) || '')}</span>
+      <span class="col-actions"><button type="button" class="danger-button del">Delete</button></span>
+    </summary>
+    <div class="col-body act-body">
+      <div class="act-row">${fld('org', 'Organization')}<label class="act-f"><span>Type</span><select data-k="type">${types.map(t => `<option${t === it.type ? ' selected' : ''}>${escapeHtml(t)}</option>`).join('')}</select></label></div>
+      ${fld('position', 'Position or leadership')}
+      ${fld('desc', 'Description', true)}
+      <div class="act-line"><span class="act-lbl">Grades</span><div class="pills">${fd('grades').o.map(g => `<label class="pill"><input type="checkbox" data-k="grades" value="${g}"${hasGrade(it, g) ? ' checked' : ''}><span>${g}</span></label>`).join('')}</div></div>
+      <div class="act-line"><span class="act-lbl">Timing</span><div class="pills">${fd('timing').o.map(t => `<label class="pill"><input type="radio" name="timing-${it.id}" data-k="timing" value="${t}"${normT(it.timing) === t ? ' checked' : ''}><span>${t}</span></label>`).join('')}</div></div>
+      <div class="act-line"><span class="act-lbl">Hours</span><div class="act-hours">${step('hours', 'hrs/wk', 168)}${step('weeks', 'wks/yr', 52)}<span class="act-total" data-total>${totalText(it.hours, it.weeks)}</span></div></div>
+      <label class="act-check"><input type="checkbox" data-cont${it.cont === 'No' ? '' : ' checked'}>Continuing in college</label>
+    </div>`;
+  d.addEventListener('toggle', () => d.open ? open.add(String(it.id)) : open.delete(String(it.id)));
+  return d;
+}
+
+/* Status menu, steppers, toggles */
+function closeMenus(except) {
+  $$('.act-card.menu-open', root).forEach(c => { if (c !== except) { c.classList.remove('menu-open'); $('.st-btn', c)?.setAttribute('aria-expanded', 'false'); } });
+}
+const actOf = el => { const c = el.closest('.act-card'); return c && C.activities.find(i => String(i.id) === c.dataset.id); };
+root.addEventListener('click', e => {
+  if (e.target.closest('.act-grip')) { e.preventDefault(); return; }
+  const b = e.target.closest('.st-btn');
+  if (b) {
+    e.preventDefault();
+    const card = b.closest('.act-card'), was = card.classList.contains('menu-open');
+    closeMenus(); card.classList.toggle('menu-open', !was); b.setAttribute('aria-expanded', String(!was));
+    return;
+  }
+  const o = e.target.closest('.st-opt');
+  if (o) {
+    e.preventDefault();
+    const it = actOf(o), card = o.closest('.act-card');
+    if (it) {
+      it.status = o.dataset.st; saveC();
+      const btn = $('.st-btn', card); btn.className = `st-btn st-${stOf(it)[1]}`; btn.innerHTML = badgeInner(it);
+      $$('.st-opt', card).forEach(x => x.setAttribute('aria-checked', String(x === o)));
+    }
+    closeMenus(); return;
+  }
+  if (e.target.closest('.st-menu')) { e.preventDefault(); return; }
+  const sp = e.target.closest('.step');
+  if (sp) {
+    const inp = sp.parentElement.querySelector('input');
+    inp.value = Math.min(Number(inp.max) || 999, Math.max(0, (Number(inp.value) || 0) + Number(sp.dataset.step)));
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+});
+document.addEventListener('click', e => { if (!e.target.closest('.st-wrap')) closeMenus(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus(); });
+root.addEventListener('input', e => {
+  if (!e.target.matches('[data-k="hours"], [data-k="weeks"]')) return;
+  const card = e.target.closest('.act-card');
+  $('[data-total]', card).textContent = totalText($('[data-k="hours"]', card).value, $('[data-k="weeks"]', card).value);
+});
+root.addEventListener('change', e => {
+  if (!e.target.matches('[data-cont]')) return;
+  const it = actOf(e.target); if (it) { it.cont = e.target.checked ? 'Yes' : 'No'; saveC(); }
+});
+
+/* Drag to reorder (pointer events: mouse + touch, with edge auto-scroll) */
+let drag = null;
+const scroller = () => getComputedStyle(content).overflowY === 'visible' ? document.scrollingElement : content;
+const scrollPos = sc => sc === document.scrollingElement ? window.scrollY : sc.scrollTop;
+const viewBounds = sc => { if (sc === document.scrollingElement) return { top: 0, bottom: innerHeight }; const r = sc.getBoundingClientRect(); return { top: r.top, bottom: r.bottom }; };
+
+root.addEventListener('pointerdown', e => {
+  const g = e.target.closest('.act-grip');
+  if (!g || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  const card = g.closest('.act-card'), list = card.parentElement, cards = $$(':scope > .act-card', list);
+  if (cards.length < 2) return;
+  e.preventDefault(); closeMenus();
+  list.classList.add('dragging-list');                       /* collapse bodies so cards are easy to swap */
+  const sc = scroller(), st0 = scrollPos(sc), rects = cards.map(c => c.getBoundingClientRect()), orig = cards.indexOf(card);
+  drag = { card, cards, sc, st0, orig, n: orig, id: e.pointerId, y: e.clientY, tops: rects.map(r => r.top + st0), hs: rects.map(r => r.height),
+           ay: rects[orig].top + rects[orig].height / 2, gap: rects[1].top - rects[0].bottom };
+  card.classList.add('is-dragging');
+  try { g.setPointerCapture(e.pointerId); } catch {}
+  dragTick();
+});
+root.addEventListener('pointermove', e => { if (drag && e.pointerId === drag.id) drag.y = e.clientY; });
+
+function dragTick() {
+  const d = drag; if (!d) return;
+  const b = viewBounds(d.sc), edge = 70;
+  const v = d.y < b.top + edge ? -Math.ceil((b.top + edge - d.y) / 4) : d.y > b.bottom - edge ? Math.ceil((d.y - (b.bottom - edge)) / 4) : 0;
+  if (v) d.sc.scrollBy({ top: Math.max(-18, Math.min(18, v)), behavior: 'instant' });
+  const t = d.y - d.ay + (scrollPos(d.sc) - d.st0);
+  d.card.style.transform = `translateY(${t}px)`;
+  const center = d.tops[d.orig] + d.hs[d.orig] / 2 + t;
+  let n = 0; d.cards.forEach((c, j) => { if (j !== d.orig && d.tops[j] + d.hs[j] / 2 < center) n++; });
+  d.n = n;
+  const step = d.hs[d.orig] + d.gap;
+  d.cards.forEach((c, j) => {
+    if (j === d.orig) return;
+    c.style.transform = n > d.orig && j > d.orig && j <= n ? `translateY(${-step}px)` : n < d.orig && j < d.orig && j >= n ? `translateY(${step}px)` : '';
+  });
+  d.raf = requestAnimationFrame(dragTick);
+}
+function endDrag(e) {
+  const d = drag; if (!d || e.pointerId !== d.id) return;
+  drag = null; cancelAnimationFrame(d.raf);
+  const { card, orig, n, tops, hs } = d;
+  const dest = n === orig ? 0 : n > orig ? tops[n] + hs[n] - hs[orig] - tops[orig] : tops[n] - tops[orig];
+  const vTop = tops[orig] + dest - scrollPos(d.sc);
+  card.classList.remove('is-dragging'); card.classList.add('settling');
+  card.style.transform = `translateY(${dest}px)`;            /* glide into the slot, then commit */
+  setTimeout(() => {
+    if (n !== orig) { const [m] = C.activities.splice(orig, 1); C.activities.splice(n, 0, m); saveC(); }
+    renderCollege();
+    const el = $(`.act-card[data-id="${card.dataset.id}"]`, root);
+    if (el) d.sc.scrollBy({ top: el.getBoundingClientRect().top - vTop, behavior: 'instant' });
+  }, 200);
+}
+root.addEventListener('pointerup', endDrag);
+root.addEventListener('pointercancel', endDrag);
+
+/* Keyboard: focus the grip, then Arrow Up / Down */
+root.addEventListener('keydown', e => {
+  const g = e.target.closest?.('.act-grip');
+  if (!g || !['ArrowUp', 'ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  const id = g.closest('.act-card').dataset.id, i = C.activities.findIndex(a => String(a.id) === id), j = i + (e.key === 'ArrowUp' ? -1 : 1);
+  if (j < 0 || j >= C.activities.length) return;
+  [C.activities[i], C.activities[j]] = [C.activities[j], C.activities[i]];
+  saveC(); renderCollege();
+  $(`.act-card[data-id="${id}"] .act-grip`, root)?.focus();
+});
 
 /* ---------- Contextual sidebar (title + GPA/SAT summary stay; nav follows the page) ---------- */
 let current = 'dashboard';
