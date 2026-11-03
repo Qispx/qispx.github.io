@@ -50,8 +50,7 @@ dock.innerHTML = `
   <button type="button" data-view="dashboard">${ICONS.dashboard}<span>Dashboard</span></button>
   <button type="button" data-view="calendar">${ICONS.calendar}<span>Calendar</span></button>
   <button type="button" data-view="college">${ICONS.college}<span>College</span></button>
-  <button type="button" data-view="builder">${ICONS.builder}<span>Schedule Builder</span></button>
-  <button type="button" data-view="gym">${ICONS.gym}<span>Gym</span></button>`
+  <button type="button" data-view="builder">${ICONS.builder}<span>Schedule Builder</span></button>`
   ;
 document.body.append(dock);
 
