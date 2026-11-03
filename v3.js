@@ -50,7 +50,8 @@ dock.innerHTML = `
   <button type="button" data-view="dashboard">${ICONS.dashboard}<span>Dashboard</span></button>
   <button type="button" data-view="calendar">${ICONS.calendar}<span>Calendar</span></button>
   <button type="button" data-view="college">${ICONS.college}<span>College</span></button>
-  <button type="button" data-view="builder">${ICONS.builder}<span>Schedule Builder</span></button>`
+  <button type="button" data-view="builder">${ICONS.builder}<span>Schedule Builder</span></button>
+  <button type="button" data-view="gym">${ICONS.gym}<span>Gym</span></button>`
   ;
 document.body.append(dock);
 
@@ -88,7 +89,7 @@ function renderOverview() {
   ov.innerHTML = `
     <div class="panel-heading"><div class="panel-heading-main"><h2>Today's Overview</h2></div></div>
     <div class="ov-stats">
-      <div class="ov-stat ${overdue ? 'bad' : ''}"><b>${dueToday}</b><span>due today${overdue ? ` · ${overdue} overdue` : ''}</span></div>
+      <div class="ov-stat {overdue ? 'bad' : ''}"><b>{dueToday}</b><span>due today{overdue ? ` · ${overdue} overdue` : ''}</span></div>
       <div class="ov-stat ${testsTmrw ? 'warn' : ''}"><b>${testsTmrw}</b><span>test${testsTmrw === 1 ? '' : 's'} tomorrow</span></div>
       <div class="ov-stat"><b>${next ? escapeHtml(formatStoredTime(next.startTime)) : '—'}</b><span>${next ? `next: ${escapeHtml(next.name)}` : 'no more classes today'}</span></div>
       <div class="ov-stat"><b>${tasks.filter(t => t.done).length}/${tasks.length}</b><span>daily tasks done</span></div>
@@ -455,7 +456,10 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMenus()
 root.addEventListener('input', e => {
   if (!e.target.matches('[data-k="hours"], [data-k="weeks"]')) return;
   const card = e.target.closest('.act-card');
-  $('[data-total]', card).textContent = totalText($('[data-k="hours"]', card).value, $('[data-k="weeks"]', card).value);
+  $('[data-total]', card).textContent = totalText(
+    $('[data-k="hours"]', card).value, 
+    $('[data-k="weeks"]', card).value
+  );
 });
 root.addEventListener('change', e => {
   if (!e.target.matches('[data-cont]')) return;
