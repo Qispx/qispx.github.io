@@ -8,7 +8,7 @@ const content = $('.content');
 const footer = $('.site-footer');
 
 /* ---------- Views (existing DOM is moved, not rebuilt) ---------- */
-const VIEWS = ['dashboard', 'calendar', 'college', 'builder'];
+const VIEWS = ['dashboard', 'calendar', 'college', 'builder', 'gym'];
 const views = {};
 VIEWS.forEach(k => {
   const v = document.createElement('div');
@@ -20,6 +20,7 @@ views.dashboard.append($('.dashboard-hero'), $('#priority'), $('#schedule'));
 views.calendar.append($('#calendar'));
 views.builder.append($('#schedule-editor'));
 views.college.innerHTML = '<div id="college-root"></div>';
+views.gym.innerHTML = '<div id="gym-root"></div>';
 /* GPA calculator + SAT inputs live on the College page (GPA & SAT tab) */
 const satPanel = document.createElement('section');
 satPanel.className = 'ui-panel sat-panel';
@@ -40,7 +41,8 @@ const ICONS = {
   dashboard: ic('<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>'),
   calendar: ic('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/>'),
   college: ic('<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>'),
-  builder: ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
+  builder: ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'), 
+  gym: ic('<path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/>')
 };
 const dock = document.createElement('nav');
 dock.className = 'dock'; dock.setAttribute('aria-label', 'Main navigation');
@@ -48,7 +50,9 @@ dock.innerHTML = `
   <button type="button" data-view="dashboard">${ICONS.dashboard}<span>Dashboard</span></button>
   <button type="button" data-view="calendar">${ICONS.calendar}<span>Calendar</span></button>
   <button type="button" data-view="college">${ICONS.college}<span>College</span></button>
-  <button type="button" data-view="builder">${ICONS.builder}<span>Schedule Builder</span></button>`;
+  <button type="button" data-view="builder">${ICONS.builder}<span>Schedule Builder</span></button>
+  <button type="button" data-view="gym">${ICONS.gym}<span>Gym</span></button>`
+  ;
 document.body.append(dock);
 
 
@@ -62,6 +66,7 @@ function showView(name) {
   if (name === 'calendar') renderCalendar();
   if (name === 'college') renderCollege();
   if (name === 'dashboard') renderOverview();
+  if (name === 'gym') window.renderGym?.();
 }
 window.showView = showView;
 document.addEventListener('click', e => {
@@ -612,6 +617,10 @@ function renderSideWidgets() {
       ['Upcoming deadlines', deadlineRows().filter(r => r.n >= 0 && !SUBMITTED.includes(r.c.status)).length]], avg);
   }
   sw.innerHTML = h;
+  } else if (current === 'gym') {
+    h = window.gymSide ? window.gymSide() : '';
+}
+  window.renderSideWidgets = renderSideWidgets;
 }
 
 /* Events don't need a class: relax the Class field and offer a "No class" choice */
