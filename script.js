@@ -1,121 +1,95 @@
-/* Local data store */
+/* Palumbo Student Interface — core logic: GPA, tasks, homework, schedule, priority dashboard.
+   v3.js and gym.js load after this file and build on the globals defined here. */
+
 const STORAGE_KEY = "studentDashboardDataV2";
-const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DENSITIES = ["light", "moderate", "heavy", "intense"];
+const TYPES = ["assignment", "test", "event"];
+const BELL_MODES = ["normal", "hour", "dayoff"];
+const byId = id => document.getElementById(id);
 
-const gradeToPoints = [
-    { min: 97, max: 100, points: 4.0 }, { min: 93, max: 96, points: 4.0 },
-    { min: 90, max: 92, points: 3.7 }, { min: 87, max: 89, points: 3.3 },
-    { min: 83, max: 86, points: 3.0 }, { min: 80, max: 82, points: 2.7 },
-    { min: 77, max: 79, points: 2.3 }, { min: 73, max: 76, points: 2.0 },
-    { min: 70, max: 72, points: 1.7 }, { min: 67, max: 69, points: 1.3 },
-    { min: 63, max: 66, points: 1.0 }, { min: 60, max: 62, points: 0.7 },
-    { min: 0, max: 59, points: 0.0 }
-];
-const classLevelAdjustment = { normal: 0.0, honors: 0.6, ap: 0.8 };
+/* ---------- Dates ---------- */
+const dateKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const parseDate = s => new Date(`${s}T00:00:00`);
+function getTodayDateString() { return dateKey(new Date()); }
+function dateToKey(year, month, day) { return dateKey(new Date(year, month, day)); }
+function addDaysToDateString(s, n) { const d = parseDate(s); d.setDate(d.getDate() + n); return dateKey(d); }
+function daysUntil(due, from) { return Math.round((parseDate(due) - parseDate(from)) / 86400000); }
+function formatDueDate(s) { return s ? parseDate(s).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : ""; }
+/* Sunday-through-Saturday week containing today */
+function getCurrentWeekRange(today) {
+    const start = addDaysToDateString(today, -parseDate(today).getDay());
+    return { start, end: addDaysToDateString(start, 6) };
+}
 
-function defaultData() {
+/* ---------- Storage ---------- */
+function loadData() {
+    let s; try { s = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch {}
+    if (!s || typeof s !== "object") s = {};
+    const arr = v => Array.isArray(v) ? v : [];
+    const str = v => typeof v === "string" ? v : null;
+    const num = v => Number.isFinite(v) ? v : null;
     return {
-        classes: [],
-        tasks: [],
-        schedule: [],
-        homework: [],
-        bellMode: "normal",
-        gpaHidden: false,
-        sat: { math: null, reading: null },
-        lastAutoClear: null,
-        lastTaskReset: null,
-        streak: { count: 0, lastDate: null }
+        classes: arr(s.classes),
+        tasks: arr(s.tasks),
+        schedule: arr(s.schedule).map(c => ({ ...c, teacher: String(c.teacher ?? "").trim() })),
+        homework: arr(s.homework).map(h => ({
+            ...h,
+            density: DENSITIES.includes(h.density) ? h.density : "moderate",
+            type: TYPES.includes(h.type) ? h.type : "assignment"
+        })),
+        bellMode: BELL_MODES.includes(s.bellMode) ? s.bellMode : "normal",
+        gpaHidden: Boolean(s.gpaHidden),
+        sat: { math: num(s.sat?.math), reading: num(s.sat?.reading) },
+        lastAutoClear: str(s.lastAutoClear),
+        lastTaskReset: str(s.lastTaskReset),
+        streak: { count: num(s.streak?.count) ?? 0, lastDate: str(s.streak?.lastDate) }
     };
 }
 
-function loadData() {
-    try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (!saved || typeof saved !== "object") return defaultData();
-        return {
-            classes: Array.isArray(saved.classes) ? saved.classes : [],
-            tasks: Array.isArray(saved.tasks) ? saved.tasks : [],
-            schedule: Array.isArray(saved.schedule) ? saved.schedule.map(course => ({ ...course, teacher: String(course.teacher ?? '').trim() })) : [],
-            homework: Array.isArray(saved.homework) ? saved.homework.map(item => ({
-                ...item,
-                density: ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate',
-                type: ['assignment','test','event'].includes(item.type) ? item.type : 'assignment'
-            })) : [],
-            bellMode: saved.bellMode === "hour" ? "hour" : "normal",
-            gpaHidden: Boolean(saved.gpaHidden),
-            sat: {
-                math: Number.isFinite(saved.sat?.math) ? saved.sat.math : null,
-                reading: Number.isFinite(saved.sat?.reading) ? saved.sat.reading : null
-            },
-            lastAutoClear: typeof saved.lastAutoClear === 'string' ? saved.lastAutoClear : null,
-            lastTaskReset: typeof saved.lastTaskReset === 'string' ? saved.lastTaskReset : null,
-            streak: {
-                count: Number.isFinite(saved.streak?.count) ? saved.streak.count : 0,
-                lastDate: typeof saved.streak?.lastDate === 'string' ? saved.streak.lastDate : null
-            }
-        };
-    } catch {
-        return defaultData();
-    }
-}
-
 let data = loadData();
+let tasks = data.tasks;
+let homework = data.homework;
+let customSchedule = data.schedule;
+let bellMode = data.bellMode;
 
-function saveData() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {} }
+function saveTasks() { data.tasks = tasks; saveData(); }
+function saveHomework() { data.homework = homework; saveData(); }
+function saveSchedule() { data.schedule = customSchedule; saveData(); }
 
 function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, char => ({
-        "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
-    }[char]));
+    return String(value).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c]));
 }
 
-/* GPA */
-function getFormData() {
-    const name = document.getElementById('class-name').value.trim();
-    const creditHours = parseFloat(document.getElementById('credit-hours').value);
-    const grade = parseFloat(document.getElementById('grade').value);
-    const quarter = document.getElementById('quarter').value;
-    const classLevel = document.getElementById('class-level').value;
-    if (!name || !Number.isFinite(creditHours) || creditHours <= 0 || !Number.isFinite(grade) || grade < 0 || grade > 100) {
-        alert('Please provide a class name, valid credit hours, and a grade from 0 to 100.');
-        return null;
-    }
-    return { id: Date.now() + Math.random(), name, creditHours, grade, quarter, classLevel };
-}
-
-function addClass(courseData, shouldSave = true) {
-    data.classes.push(courseData);
-    if (shouldSave) saveData();
-    renderClasses();
-}
+/* ---------- GPA ---------- */
+const gradeToPoints = [[93, 4.0], [90, 3.7], [87, 3.3], [83, 3.0], [80, 2.7], [77, 2.3], [73, 2.0], [70, 1.7], [67, 1.3], [63, 1.0], [60, 0.7], [0, 0]];
+const classLevelAdjustment = { normal: 0, honors: 0.6, ap: 0.8 };
+const pointsFor = grade => gradeToPoints.find(([min]) => grade >= min)[1];
 
 function renderClasses() {
-    document.querySelectorAll('.course-list').forEach(list => list.innerHTML = '');
-    const counts = { q1:0, q2:0, q3:0, q4:0 };
-
+    document.querySelectorAll(".course-list").forEach(list => list.innerHTML = "");
     data.classes.forEach(course => {
         const list = document.querySelector(`#${course.quarter} .course-list`);
         if (!list) return;
-        counts[course.quarter]++;
-        const item = document.createElement('li');
-        item.className = 'course-item';
+        const item = document.createElement("li");
+        item.className = "course-item";
         item.innerHTML = `
             <span class="course-item-name">${escapeHtml(course.name)} - ${course.creditHours} Credits - Grade: ${course.grade}</span>
             <div class="course-item-actions">
                 <button class="edit-btn" type="button">Edit</button>
                 <button class="delete-btn" type="button">Delete</button>
-            </div>
-        `;
-        item.querySelector('.delete-btn').addEventListener('click', () => deleteCourse(course.id));
-        item.querySelector('.edit-btn').addEventListener('click', () => enterCourseEditMode(item, course));
+            </div>`;
+        item.querySelector(".delete-btn").addEventListener("click", () => {
+            data.classes = data.classes.filter(c => c.id !== course.id);
+            saveData(); renderClasses();
+        });
+        item.querySelector(".edit-btn").addEventListener("click", () => enterCourseEditMode(item, course));
         list.appendChild(item);
     });
-
-    Object.entries(counts).forEach(([quarter, count]) => {
-        const list = document.querySelector(`#${quarter} .course-list`);
-        if (!count) list.innerHTML = '<li class="empty-course-list">No classes added yet.</li>';
+    document.querySelectorAll(".course-list").forEach(list => {
+        if (!list.children.length) list.innerHTML = '<li class="empty-course-list">No classes added yet.</li>';
     });
     calculateGPA();
 }
@@ -127,926 +101,511 @@ function enterCourseEditMode(item, course) {
             <input type="number" class="edit-grade" value="${course.grade}" min="0" max="100">
             <button type="button" class="save-edit-btn">Save</button>
             <button type="button" class="secondary-button cancel-edit-btn">Cancel</button>
-        </div>
-    `;
-
-    item.querySelector('.save-edit-btn').addEventListener('click', () => {
-        const input = item.querySelector('.edit-grade');
-        const newGrade = parseFloat(input.value);
-        if (!Number.isFinite(newGrade) || newGrade < 0 || newGrade > 100) {
-            alert('Enter a valid grade from 0 to 100.');
-            return;
-        }
-        course.grade = newGrade;
-        saveData();
-        renderClasses();
+        </div>`;
+    item.querySelector(".save-edit-btn").addEventListener("click", () => {
+        const grade = parseFloat(item.querySelector(".edit-grade").value);
+        if (!Number.isFinite(grade) || grade < 0 || grade > 100) return alert("Enter a valid grade from 0 to 100.");
+        course.grade = grade;
+        saveData(); renderClasses();
     });
-
-    item.querySelector('.cancel-edit-btn').addEventListener('click', renderClasses);
-}
-
-function deleteCourse(id) {
-    data.classes = data.classes.filter(course => course.id !== id);
-    saveData();
-    renderClasses();
+    item.querySelector(".cancel-edit-btn").addEventListener("click", renderClasses);
 }
 
 function calculateGPA() {
-    let totalCredits = 0, unweighted = 0, weighted = 0;
-    data.classes.forEach(course => {
-        const gradePoints = gradeToPoints.find(range => course.grade >= range.min && course.grade <= range.max)?.points ?? 0;
-        const weightedPoints = gradePoints + (classLevelAdjustment[course.classLevel] ?? 0);
-        totalCredits += course.creditHours;
-        unweighted += gradePoints * course.creditHours;
-        weighted += weightedPoints * course.creditHours;
+    let credits = 0, unweighted = 0, weighted = 0;
+    data.classes.forEach(c => {
+        const pts = pointsFor(c.grade);
+        credits += c.creditHours;
+        unweighted += pts * c.creditHours;
+        weighted += (pts + (classLevelAdjustment[c.classLevel] ?? 0)) * c.creditHours;
     });
-    document.getElementById('unweighted-gpa').textContent = totalCredits ? (unweighted / totalCredits).toFixed(2) : '0.00';
-    document.getElementById('weighted-gpa').textContent = totalCredits ? (weighted / totalCredits).toFixed(2) : '0.00';
+    byId("unweighted-gpa").textContent = credits ? (unweighted / credits).toFixed(2) : "0.00";
+    byId("weighted-gpa").textContent = credits ? (weighted / credits).toFixed(2) : "0.00";
     renderPriorityDashboard();
 }
 
-document.getElementById('add-class-form').addEventListener('submit', event => {
+byId("add-class-form").addEventListener("submit", event => {
     event.preventDefault();
-    const course = getFormData();
-    if (!course) return;
-    addClass(course);
+    const name = byId("class-name").value.trim();
+    const creditHours = parseFloat(byId("credit-hours").value);
+    const grade = parseFloat(byId("grade").value);
+    if (!name || !Number.isFinite(creditHours) || creditHours <= 0 || !Number.isFinite(grade) || grade < 0 || grade > 100) {
+        return alert("Please provide a class name, valid credit hours, and a grade from 0 to 100.");
+    }
+    data.classes.push({ id: Date.now() + Math.random(), name, creditHours, grade, quarter: byId("quarter").value, classLevel: byId("class-level").value });
+    saveData(); renderClasses();
     event.target.reset();
 });
 
-/* Collapsible GPA year sections */
-function toggleQuarter(quarter) {
-    const section = document.getElementById(quarter);
-    if (section) section.classList.toggle('expanded');
-}
+function toggleQuarter(id) { byId(id)?.classList.toggle("expanded"); }
+function toggleDropdown(id) { byId(id)?.classList.toggle("expanded"); }
 
-/* Generic collapsible dropdown used by every list panel (tasks, homework,
-   today's classes, saved classes, priority breakdown) */
-function toggleDropdown(id) {
-    const section = document.getElementById(id);
-    if (section) section.classList.toggle('expanded');
-}
-
-/* GPA visibility toggle */
 function toggleGpaVisibility() {
     data.gpaHidden = !data.gpaHidden;
     saveData();
     applyGpaVisibility();
 }
-
 function applyGpaVisibility() {
-    const values = document.getElementById('gpa-values');
-    const btn = document.getElementById('gpa-toggle-btn');
-    if (!values || !btn) return;
-    values.classList.toggle('hidden', data.gpaHidden);
-    btn.textContent = data.gpaHidden ? 'Show GPA' : 'Hide GPA';
+    byId("gpa-values")?.classList.toggle("hidden", data.gpaHidden);
+    const btn = byId("gpa-toggle-btn");
+    if (btn) btn.textContent = data.gpaHidden ? "Show GPA" : "Hide GPA";
     renderPriorityDashboard();
 }
 
-/* SAT score tracking */
+/* ---------- SAT ---------- */
+function updateSatComposite(save = true) {
+    const read = id => { const n = parseInt(byId(id).value, 10); return Number.isFinite(n) ? n : null; };
+    const math = read("sat-math"), reading = read("sat-reading");
+    byId("sat-composite").textContent = (math ?? 0) + (reading ?? 0);
+    if (save) { data.sat = { math, reading }; saveData(); }
+}
 function loadSatInputs() {
-    document.getElementById('sat-math').value = data.sat.math ?? '';
-    document.getElementById('sat-reading').value = data.sat.reading ?? '';
+    byId("sat-math").value = data.sat.math ?? "";
+    byId("sat-reading").value = data.sat.reading ?? "";
     updateSatComposite(false);
 }
+["sat-math", "sat-reading"].forEach(id => byId(id).addEventListener("input", () => updateSatComposite(true)));
 
-function updateSatComposite(shouldSave = true) {
-    const mathValue = parseInt(document.getElementById('sat-math').value, 10);
-    const readingValue = parseInt(document.getElementById('sat-reading').value, 10);
-    const math = Number.isFinite(mathValue) ? mathValue : null;
-    const reading = Number.isFinite(readingValue) ? readingValue : null;
-    const composite = (math ?? 0) + (reading ?? 0);
-
-    document.getElementById('sat-composite').textContent = composite || 0;
-
-    if (shouldSave) {
-        data.sat = { math, reading };
-        saveData();
-    }
-}
-
-document.getElementById('sat-math').addEventListener('input', () => updateSatComposite(true));
-document.getElementById('sat-reading').addEventListener('input', () => updateSatComposite(true));
-
-
-/* Schedule builder — intentionally starts empty
-   (declared early so the priority dashboard can safely reference it
-   during the very first render) */
-let customSchedule = data.schedule;
-let bellMode = data.bellMode;
-
-/* Daily tasks */
-let tasks = data.tasks;
-function saveTasks() { data.tasks = tasks; saveData(); }
-
-/* Daily Tasks reset every day: the tasks stay, but anything checked off
-   yesterday (or earlier) becomes unchecked when a new day starts. The first
-   run only stamps today's date so nothing is unchecked unexpectedly. */
+/* ---------- Daily tasks ---------- */
+/* Tasks stay, but anything checked off on a previous day is unchecked when a new day starts.
+   The very first run only stamps today's date. */
 function maybeResetDailyTasks() {
     const today = getTodayDateString();
     if (data.lastTaskReset === today) return;
-
-    if (data.lastTaskReset !== null) tasks.forEach(task => { task.done = false; });
+    if (data.lastTaskReset !== null) tasks.forEach(t => { t.done = false; });
     data.lastTaskReset = today;
     saveTasks();
     renderTasks();
 }
+
 function renderTasks() {
-    const list = document.getElementById('task-list');
-    const progress = document.getElementById('task-progress');
-    list.innerHTML = '';
-    if (!tasks.length) {
-        list.innerHTML = '<div class="task-empty">Chod do something today please...</div>';
-        progress.textContent = '0 / 0';
-        return;
-    }
+    const list = byId("task-list");
+    list.innerHTML = "";
+    if (!tasks.length) list.innerHTML = '<div class="task-empty">Chod do something today please...</div>';
     tasks.forEach(task => {
-        const item = document.createElement('label');
-        item.className = `task-item${task.done ? ' done' : ''}`;
-        item.innerHTML = `<input type="checkbox" ${task.done ? 'checked' : ''} aria-label="Complete task"><span>${escapeHtml(task.text)}</span>`;
-        item.querySelector('input').addEventListener('change', event => {
-            task.done = event.target.checked;
-            if (event.target.checked) recordDailyActivity();
-            saveTasks();
-            renderTasks();
+        const item = document.createElement("label");
+        item.className = `task-item${task.done ? " done" : ""}`;
+        item.innerHTML = `<input type="checkbox" ${task.done ? "checked" : ""} aria-label="Complete task"><span>${escapeHtml(task.text)}</span>`;
+        item.querySelector("input").addEventListener("change", e => {
+            task.done = e.target.checked;
+            if (task.done) recordDailyActivity();
+            saveTasks(); renderTasks();
         });
         list.appendChild(item);
     });
-    progress.textContent = `${tasks.filter(task => task.done).length} / ${tasks.length}`;
+    byId("task-progress").textContent = `${tasks.filter(t => t.done).length} / ${tasks.length}`;
+    window.renderOverview?.();
 }
 
-document.getElementById('task-form').addEventListener('submit', event => {
+byId("task-form").addEventListener("submit", event => {
     event.preventDefault();
-    const input = document.getElementById('task-input');
-    const text = input.value.trim();
+    const input = byId("task-input"), text = input.value.trim();
     if (!text) return;
     tasks.push({ id: Date.now() + Math.random(), text, done: false });
     saveTasks();
-    input.value = '';
+    input.value = "";
     renderTasks();
     input.focus();
 });
 
-
-/* Homework tracker */
-let homework = data.homework;
-
-/* Priority is computed automatically from the due date, density is chosen by the user */
-const priorityRank = { veryhigh: 0, high: 1, medium: 2, low: 3 };
-const priorityLabel = { veryhigh: 'Very High', high: 'High', medium: 'Medium', low: 'Low' };
-
-const densityRank = { intense: 0, heavy: 1, moderate: 2, light: 3 };
-const densityLabel = { intense: 'Intense', heavy: 'Heavy', moderate: 'Moderate', light: 'Light' };
-
-const typeLabel = { assignment: 'Assignment', test: 'Test / Quiz', event: 'Event' };
-const typeTag = { test: 'TEST', event: 'EVENT' };
-
-function saveHomework() {
-    data.homework = homework;
-    saveData();
+function deleteCompletedTasks() {
+    const count = tasks.filter(t => t.done).length;
+    if (!count) return alert("There are no completed tasks to delete.");
+    if (!confirm(`Delete ${count} completed task${count === 1 ? "" : "s"}?`)) return;
+    tasks = tasks.filter(t => !t.done);
+    saveTasks(); renderTasks();
 }
 
-/* Auto-clear completed homework every Sunday. Runs once per calendar day at
-   most (guarded by data.lastAutoClear) so it doesn't wipe things repeatedly
-   if the page is reloaded several times on a Sunday. */
-function maybeAutoClearCompletedHomework() {
-    const today = getTodayDateString();
-    if (new Date(`${today}T00:00:00`).getDay() !== 0) return;
-    if (data.lastAutoClear === today) return;
-
-    const hasCompleted = homework.some(item => item.done);
-    homework = homework.filter(item => !item.done);
-    data.lastAutoClear = today;
-    saveHomework();
-
-    if (hasCompleted) renderHomework();
-}
-
-/* Daily streak — counts consecutive days on which the student completed at
-   least one task or homework item. Called only when something is checked
-   off (not when unchecked), so it never counts backwards. */
+/* ---------- Streak ---------- */
+/* Counts consecutive days with at least one task or homework item checked off. */
 function recordDailyActivity() {
     const today = getTodayDateString();
     if (data.streak.lastDate === today) return;
-
-    const yesterday = addDaysToDateString(today, -1);
-    data.streak.count = data.streak.lastDate === yesterday ? data.streak.count + 1 : 1;
+    data.streak.count = data.streak.lastDate === addDaysToDateString(today, -1) ? data.streak.count + 1 : 1;
     data.streak.lastDate = today;
     saveData();
     renderPriorityDashboard();
 }
-
-/* The stored count only advances forward; this checks whether it's still
-   "live" (activity today or yesterday) so a multi-day gap displays as 0
-   instead of a stale number. */
+/* A multi-day gap displays as 0 instead of a stale number. */
 function getDisplayStreak() {
-    if (!data.streak || !data.streak.lastDate) return 0;
-    const today = getTodayDateString();
-    const yesterday = addDaysToDateString(today, -1);
-    if (data.streak.lastDate === today || data.streak.lastDate === yesterday) return data.streak.count;
-    return 0;
+    const last = data.streak.lastDate, today = getTodayDateString();
+    return last === today || last === addDaysToDateString(today, -1) ? data.streak.count : 0;
 }
 
-function formatDueDate(dateString) {
-    if (!dateString) return '';
-    const date = new Date(`${dateString}T00:00:00`);
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
+/* ---------- Homework ---------- */
+const priorityRank = { veryhigh: 0, high: 1, medium: 2, low: 3 };
+const priorityLabel = { veryhigh: "Very High", high: "High", medium: "Medium", low: "Low" };
+const densityRank = { intense: 0, heavy: 1, moderate: 2, light: 3 };
+const densityLabel = { intense: "Intense", heavy: "Heavy", moderate: "Moderate", light: "Light" };
+const typeLabel = { assignment: "Assignment", test: "Test / Quiz", event: "Event" };
+const typeTag = { test: "TEST", event: "EVENT" };
+const densityWeight = { light: 1, moderate: 2, heavy: 3, intense: 4 };
 
-function getTodayDateString() {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
-}
-
-function computePriority(dueDateString, density = 'moderate') {
-    if (!dueDateString) return 'low';
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const due = new Date(`${dueDateString}T00:00:00`);
-    const diffDays = Math.round((due - today) / 86400000);
-
-    if (diffDays <= 0) return 'veryhigh';
-
-    const densityWeight = {
-        light: 1,
-        moderate: 2,
-        heavy: 3,
-        intense: 4
-    };
-
-    const weight = densityWeight[density] ?? 2;
-    const pressure = weight / (diffDays + 1);
-
-    if (pressure >= 1.5) return 'veryhigh';
-    if (pressure >= 0.75) return 'high';
-    if (pressure >= 0.40) return 'medium';
-
-    return 'low';
+function computePriority(dueDate, density = "moderate") {
+    if (!dueDate) return "low";
+    const diff = daysUntil(dueDate, getTodayDateString());
+    if (diff <= 0) return "veryhigh";
+    const pressure = (densityWeight[density] ?? 2) / (diff + 1);
+    return pressure >= 1.5 ? "veryhigh" : pressure >= 0.75 ? "high" : pressure >= 0.4 ? "medium" : "low";
 }
 
 function getClassNamesForHomework() {
-    const names = [...new Set(customSchedule.map(course => String(course.name || '').trim()).filter(Boolean))];
-    return names.sort((a, b) => a.localeCompare(b));
+    return [...new Set(customSchedule.map(c => String(c.name || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
+const hwType = byId("homework-type"), hwClass = byId("homework-class");
+
+/* Events don't need a class: relax the Class field and offer a "No class" choice */
+function syncHwClass() {
+    const ev = hwType.value === "event";
+    hwClass.required = !ev;
+    let general = hwClass.querySelector('option[value="General"]');
+    if (ev && !general) hwClass.add(new Option("No class (general event)", "General"), 1);
+    if (!ev && general) { if (hwClass.value === "General") hwClass.value = ""; general.remove(); }
+    if (ev && !hwClass.value) hwClass.value = "General";
+}
+hwType.addEventListener("change", syncHwClass);
+
 function populateHomeworkClasses() {
-    const select = document.getElementById('homework-class');
-    const current = select.value;
-    const classNames = getClassNamesForHomework();
-
-    select.innerHTML = classNames.length
-        ? '<option value="">Select a class</option>'
-        : '<option value="">Add a class first</option>';
-
-    classNames.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        select.appendChild(option);
-    });
-
-    if (classNames.includes(current)) select.value = current;
+    const current = hwClass.value, names = getClassNamesForHomework();
+    hwClass.innerHTML = `<option value="">${names.length ? "Select a class" : "Add a class first"}</option>`;
+    names.forEach(n => hwClass.add(new Option(n, n)));
+    if (names.includes(current)) hwClass.value = current;
+    syncHwClass();
+    if (current === "General" && hwType.value === "event") hwClass.value = "General";
 }
 
 function homeworkSort(a, b) {
-    const completedCompare = Number(Boolean(a.done)) - Number(Boolean(b.done));
-    if (completedCompare !== 0) return completedCompare;
-
-    // Overdue items always sort to the top, ahead of every other priority tier
     const today = getTodayDateString();
-    const aOverdue = !a.done && a.dueDate && a.dueDate < today;
-    const bOverdue = !b.done && b.dueDate && b.dueDate < today;
-    const overdueCompare = Number(bOverdue) - Number(aOverdue);
-    if (overdueCompare !== 0) return overdueCompare;
-
-    const priorityCompare =
-        priorityRank[computePriority(a.dueDate, a.density)] -
-        priorityRank[computePriority(b.dueDate, b.density)];
-    if (priorityCompare !== 0) return priorityCompare; // <-- this was missing before
-
-    const densityCompare = (densityRank[a.density] ?? 2) - (densityRank[b.density] ?? 2);
-    if (densityCompare !== 0) return densityCompare;
-
-    const dueCompare = (a.dueDate || '9999-12-31').localeCompare(b.dueDate || '9999-12-31');
-    if (dueCompare !== 0) return dueCompare;
-
-    return String(a.name).localeCompare(String(b.name));
+    const overdue = h => !h.done && h.dueDate && h.dueDate < today;
+    return (Number(!!a.done) - Number(!!b.done))
+        || (Number(overdue(b)) - Number(overdue(a)))
+        || (priorityRank[computePriority(a.dueDate, a.density)] - priorityRank[computePriority(b.dueDate, b.density)])
+        || ((densityRank[a.density] ?? 2) - (densityRank[b.density] ?? 2))
+        || (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31")
+        || String(a.name).localeCompare(String(b.name));
 }
 
 function renderHomework() {
-    const list = document.getElementById('homework-list');
-    const progress = document.getElementById('homework-progress');
-    list.innerHTML = '';
+    const list = byId("homework-list"), today = getTodayDateString();
+    list.innerHTML = homework.length ? "" : '<div class="homework-empty">No homework added yet. You are all caught up.</div>';
 
-    const sorted = [...homework].sort(homeworkSort);
-    const today = getTodayDateString();
-
-    if (!sorted.length) {
-        list.innerHTML = '<div class="homework-empty">No homework added yet. You are all caught up.</div>';
-        progress.textContent = '0 / 0';
-        populateHomeworkClasses();
-        renderCalendar();
-        renderPriorityDashboard();
-        return;
-    }
-
-sorted.forEach(item => {
-    const row = document.createElement('div');
-    const overdue = !item.done && item.dueDate < today;
-    row.className = `homework-item${item.done ? ' completed' : ''}${overdue ? ' overdue' : ''}`;
-    row.dataset.homeworkId = item.id;
-
-    const dueText = `Due ${formatDueDate(item.dueDate)}`;
-    const priority = computePriority(item.dueDate, item.density);
-    const density = ['light','moderate','heavy','intense'].includes(item.density) ? item.density : 'moderate';
-
-    row.innerHTML = `
-        <div class="homework-main">
-            <div class="homework-name">${escapeHtml(item.name)}</div>
-            <div class="homework-meta">
-                <span>${escapeHtml(item.className)}</span>
-                <span>•</span>
-                <span>${escapeHtml(dueText)}</span>
-                ${overdue ? '<span class="homework-badge overdue">Overdue</span>' : ''}
-                <span class="homework-badge ${escapeHtml(priority)}"> Priority: ${escapeHtml(priorityLabel[priority])}</span>
-                <span class="homework-badge ${escapeHtml(density)}">Density: ${escapeHtml(densityLabel[density])}</span>
-                ${item.type !== 'assignment' ? `<span class="homework-badge ${escapeHtml(item.type)}">${escapeHtml(typeLabel[item.type] || 'Assignment')}</span>` : ''}
+    [...homework].sort(homeworkSort).forEach(item => {
+        const overdue = !item.done && item.dueDate < today;
+        const priority = computePriority(item.dueDate, item.density);
+        const density = DENSITIES.includes(item.density) ? item.density : "moderate";
+        const row = document.createElement("div");
+        row.className = `homework-item${item.done ? " completed" : ""}${overdue ? " overdue" : ""}`;
+        row.dataset.homeworkId = item.id;
+        row.innerHTML = `
+            <div class="homework-main">
+                <div class="homework-name">${escapeHtml(item.name)}</div>
+                <div class="homework-meta">
+                    <span>${escapeHtml(item.className)}</span>
+                    <span>•</span>
+                    <span>Due ${escapeHtml(formatDueDate(item.dueDate))}</span>
+                    ${overdue ? '<span class="homework-badge overdue">Overdue</span>' : ""}
+                    <span class="homework-badge ${priority}">Priority: ${priorityLabel[priority]}</span>
+                    <span class="homework-badge ${density}">Density: ${densityLabel[density]}</span>
+                    ${item.type !== "assignment" ? `<span class="homework-badge ${escapeHtml(item.type)}">${escapeHtml(typeLabel[item.type] || "Assignment")}</span>` : ""}
+                </div>
             </div>
-        </div>
-        <div class="homework-actions">
-            <input type="checkbox" ${item.done ? 'checked' : ''} aria-label="Complete homework">
-            <button class="danger-button" type="button" aria-label="Delete homework">Delete</button>
-        </div>
-    `;
-
-    row.querySelector('input').addEventListener('change', event => {
-        item.done = event.target.checked;
-        if (event.target.checked) recordDailyActivity();
-        saveHomework();
-        renderHomework();
+            <div class="homework-actions">
+                <input type="checkbox" ${item.done ? "checked" : ""} aria-label="Complete homework">
+                <button class="danger-button" type="button" aria-label="Delete homework">Delete</button>
+            </div>`;
+        row.querySelector("input").addEventListener("change", e => {
+            item.done = e.target.checked;
+            if (item.done) recordDailyActivity();
+            saveHomework(); renderHomework();
+        });
+        row.querySelector("button").addEventListener("click", () => {
+            homework = homework.filter(h => h.id !== item.id);
+            saveHomework(); renderHomework();
+        });
+        list.appendChild(row);
     });
 
-    row.querySelector('button').addEventListener('click', () => {
-        homework = homework.filter(entry => entry.id !== item.id);
-        saveHomework();
-        renderHomework();
-    });
-
-    list.appendChild(row);
-});
-
-    progress.textContent = `${homework.filter(item => item.done).length} / ${homework.length}`;
+    byId("homework-progress").textContent = `${homework.filter(h => h.done).length} / ${homework.length}`;
     populateHomeworkClasses();
-    renderCalendar();
+    window.renderCalendar?.();
     renderPriorityDashboard();
 }
 
-document.getElementById('homework-form').addEventListener('submit', event => {
+byId("homework-form").addEventListener("submit", event => {
     event.preventDefault();
-
-    const name = document.getElementById('homework-name').value.trim();
-    const className = document.getElementById('homework-class').value;
-    const density = document.getElementById('homework-density').value;
-    const type = document.getElementById('homework-type').value;
-    const dueDate = document.getElementById('homework-due').value;
-
-    if (!name || !className || !dueDate) {
-        alert('Please enter the homework name, class, and due date.');
-        return;
-    }
-
+    const name = byId("homework-name").value.trim(), className = hwClass.value, dueDate = byId("homework-due").value;
+    if (!name || !className || !dueDate) return alert("Please enter the homework name, class, and due date.");
     homework.push({
-        id: Date.now() + Math.random(),
-        name,
-        className,
-        density,
-        type: ['assignment','test','event'].includes(type) ? type : 'assignment',
-        dueDate,
-        done: false
+        id: Date.now() + Math.random(), name, className, dueDate, done: false,
+        density: byId("homework-density").value,
+        type: TYPES.includes(hwType.value) ? hwType.value : "assignment"
     });
-
     saveHomework();
     event.target.reset();
-    document.getElementById('homework-density').value = 'moderate';
-    document.getElementById('homework-type').value = 'assignment';
+    byId("homework-density").value = "moderate";
+    hwType.value = "assignment";
     renderHomework();
 });
 
-/* ==========================================================================
-   What's Due / What Should I Do? — Priority Dashboard
-   Reads directly from data.homework, customSchedule and data.classes — no
-   separate data source, and no AI: just date math against what the student
-   already tracks.
-   ========================================================================== */
-
-function addDaysToDateString(dateString, days) {
-    const date = new Date(`${dateString}T00:00:00`);
-    date.setDate(date.getDate() + days);
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+/* Completed homework is cleared on Sundays, at most once per calendar day. */
+function maybeAutoClearCompletedHomework() {
+    const today = getTodayDateString();
+    if (parseDate(today).getDay() !== 0 || data.lastAutoClear === today) return;
+    const hadCompleted = homework.some(h => h.done);
+    homework = homework.filter(h => !h.done);
+    data.lastAutoClear = today;
+    saveHomework();
+    if (hadCompleted) renderHomework();
 }
 
-function daysUntil(dueDateString, todayString) {
-    const today = new Date(`${todayString}T00:00:00`);
-    const due = new Date(`${dueDateString}T00:00:00`);
-    return Math.round((due - today) / 86400000);
+/* Used by the calendar and the college workspace to jump to an assignment row */
+function jumpToHomeworkItem(id) {
+    window.showView?.("dashboard");
+    setTimeout(() => {
+        byId("homework")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(() => {
+            const row = document.querySelector(`.homework-item[data-homework-id="${id}"]`);
+            if (!row) return;
+            row.classList.add("flash");
+            setTimeout(() => row.classList.remove("flash"), 1600);
+        }, 300);
+    }, 320);
 }
 
-function relativeDueLabel(diffDays) {
-    if (diffDays < 0) return 'Overdue';
-    if (diffDays === 0) return 'Due today';
-    if (diffDays === 1) return 'Due tomorrow';
-    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    if (diffDays <= 6) {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() + diffDays);
-        return `Due ${dayNames[d.getDay()]}`;
-    }
-    return `Due ${formatDueDate(addDaysToDateString(getTodayDateString(), diffDays))}`;
+/* ---------- Priority dashboard ---------- */
+function relativeDueLabel(diff) {
+    if (diff < 0) return "Overdue";
+    if (diff === 0) return "Due today";
+    if (diff === 1) return "Due tomorrow";
+    const date = addDaysToDateString(getTodayDateString(), diff);
+    return diff <= 6 ? `Due ${DAY_NAMES[parseDate(date).getDay()]}` : `Due ${formatDueDate(date)}`;
 }
-
-function urgencyBucket(diffDays) {
-    if (diffDays <= 0) return { key: 'red' };
-    if (diffDays === 1) return { key: 'orange' };
-    if (diffDays <= 4) return { key: 'yellow' };
-    return { key: 'green' };
-}
-
-/* Sunday-through-Saturday range containing today, used to scope "this
-   week's" progress bar — matches the week the Sunday auto-clear resets. */
-function getCurrentWeekRange(todayString) {
-    const today = new Date(`${todayString}T00:00:00`);
-    const start = new Date(today);
-    start.setDate(today.getDate() - today.getDay());
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return { start: fmt(start), end: fmt(end) };
-}
+function urgencyBucket(diff) { return diff <= 0 ? "red" : diff === 1 ? "orange" : diff <= 4 ? "yellow" : "green"; }
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 function renderPriorityDashboard() {
-    const listEl = document.getElementById('priority-today-list');
-    const statsEl = document.getElementById('priority-stats');
-    const insightEl = document.getElementById('priority-insight');
-    const workloadBarEl = document.getElementById('priority-workload-bar');
-    const workloadOverdueEl = document.getElementById('priority-workload-overdue');
-    const workloadCountEl = document.getElementById('priority-workload-count');
-    const overduePillEl = document.getElementById('priority-overdue-pill');
+    const listEl = byId("priority-today-list"), statsEl = byId("priority-stats");
     if (!listEl || !statsEl) return;
-
     const today = getTodayDateString();
+    const open = homework.filter(h => !h.done && h.dueDate);
+    const diffOf = h => daysUntil(h.dueDate, today);
 
-    const openHomework = homework.filter(item => !item.done && item.dueDate);
+    /* Due soon: overdue always, assignments within 7 days, tests/events within 14 */
+    const dueSoon = open
+        .filter(h => diffOf(h) < 0 || diffOf(h) <= (h.type === "assignment" ? 7 : 14))
+        .sort((a, b) => priorityRank[computePriority(a.dueDate, a.density)] - priorityRank[computePriority(b.dueDate, b.density)] || a.dueDate.localeCompare(b.dueDate));
 
-    /* Assignments Due Soon — a flat list of items that actually need
-       attention: overdue work always shows, assignments within 7 days,
-       tests/quizzes and events within 14 days. Sorted by computed priority
-       (same veryhigh/high/medium/low scale as the Homework Tracker) so the
-       most urgent work leads regardless of type. Title is the assignment
-       name; the class it belongs to is shown as the subtext below it. */
-    listEl.innerHTML = '';
-
-    const dueSoonItems = openHomework
-        .filter(item => {
-            const diff = daysUntil(item.dueDate, today);
-            if (diff < 0) return true;
-            return item.type === 'assignment' ? diff <= 7 : diff <= 14;
-        })
-        .sort((a, b) => {
-            const pa = priorityRank[computePriority(a.dueDate, a.density)];
-            const pb = priorityRank[computePriority(b.dueDate, b.density)];
-            if (pa !== pb) return pa - pb;
-            return a.dueDate.localeCompare(b.dueDate);
-        });
-
-    if (!dueSoonItems.length) {
-        listEl.innerHTML = '<div class="priority-empty">Nothing due soon. Nice.</div>';
-    } else {
-        dueSoonItems.forEach(item => {
-            const diffDays = daysUntil(item.dueDate, today);
-            const bucket = urgencyBucket(diffDays);
-            const row = document.createElement('div');
-            row.className = `priority-item ${bucket.key}`;
-            row.innerHTML = `
-                <span class="priority-item-main">
-                    <span class="priority-item-class">${escapeHtml(item.name)}${typeTag[item.type] ? ` <span class="priority-tag priority-tag-${escapeHtml(item.type)}">${typeTag[item.type]}</span>` : ''}</span>
-                    <span class="priority-item-task">${escapeHtml(item.className)} — ${escapeHtml(relativeDueLabel(diffDays))}</span>
-                </span>
-            `;
-            listEl.appendChild(row);
-        });
-    }
-
-    /* Coming up stats */
-    const overdueItems = openHomework.filter(item => daysUntil(item.dueDate, today) < 0);
-    const overdueCount = overdueItems.length;
-    const dueNext7 = openHomework.filter(item => {
-        const diff = daysUntil(item.dueDate, today);
-        return diff >= 0 && diff <= 7;
+    listEl.innerHTML = dueSoon.length ? "" : '<div class="priority-empty">Nothing due soon. Nice.</div>';
+    dueSoon.forEach(h => {
+        const diff = diffOf(h), row = document.createElement("div");
+        row.className = `priority-item ${urgencyBucket(diff)}`;
+        row.innerHTML = `
+            <span class="priority-item-main">
+                <span class="priority-item-class">${escapeHtml(h.name)}${typeTag[h.type] ? ` <span class="priority-tag priority-tag-${escapeHtml(h.type)}">${typeTag[h.type]}</span>` : ""}</span>
+                <span class="priority-item-task">${escapeHtml(h.className)} — ${escapeHtml(relativeDueLabel(diff))}</span>
+            </span>`;
+        listEl.appendChild(row);
     });
-    const testsNext14 = openHomework.filter(item => {
-        const diff = daysUntil(item.dueDate, today);
-        return item.type === 'test' && diff >= 0 && diff <= 14;
-    });
+
+    const overdueCount = open.filter(h => diffOf(h) < 0).length;
+    const dueNext7 = open.filter(h => diffOf(h) >= 0 && diffOf(h) <= 7);
+    const testsNext14 = open.filter(h => h.type === "test" && diffOf(h) >= 0 && diffOf(h) <= 14);
 
     statsEl.innerHTML = `
-        <div class="priority-stat">
-            <span class="priority-stat-value">${dueNext7.length}</span>
-            <span class="priority-stat-label">assignment${dueNext7.length === 1 ? '' : 's'} due in 7 days</span>
-        </div>
-        <div class="priority-stat">
-            <span class="priority-stat-value">${testsNext14.length}</span>
-            <span class="priority-stat-label">test${testsNext14.length === 1 ? '' : 's'} in 14 days</span>
-        </div>
-        <div class="priority-stat streak">
-            <span class="priority-stat-value">${getDisplayStreak()}</span>
-            <span class="priority-stat-label">day streak</span>
-        </div>
-    `;
+        <div class="priority-stat"><span class="priority-stat-value">${dueNext7.length}</span><span class="priority-stat-label">${plural(dueNext7.length, "assignment")} due in 7 days</span></div>
+        <div class="priority-stat"><span class="priority-stat-value">${testsNext14.length}</span><span class="priority-stat-label">${plural(testsNext14.length, "test")} in 14 days</span></div>
+        <div class="priority-stat streak"><span class="priority-stat-value">${getDisplayStreak()}</span><span class="priority-stat-label">day streak</span></div>`;
 
-    if (overduePillEl) {
-        overduePillEl.textContent = overdueCount > 0 ? `${overdueCount} Overdue` : 'All caught up';
-        overduePillEl.classList.toggle('overdue-pill', overdueCount > 0);
+    const pill = byId("priority-overdue-pill");
+    if (pill) {
+        pill.textContent = overdueCount ? `${overdueCount} Overdue` : "All caught up";
+        pill.classList.toggle("overdue-pill", overdueCount > 0);
     }
 
-    /* Weekly progress bar — tracks completion of everything due this
-       Sun-Sat week. The green fill grows as items are checked off; a red
-       segment anchored to the far end reflects overdue items still
-       outstanding; hitting 100% flips the bar to a solid "complete" green. */
-    if (workloadBarEl && workloadCountEl) {
-        const { start: weekStart, end: weekEnd } = getCurrentWeekRange(today);
-        const thisWeekItems = homework.filter(item => item.dueDate >= weekStart && item.dueDate <= weekEnd);
-        const thisWeekTotal = thisWeekItems.length;
-        const thisWeekCompleted = thisWeekItems.filter(item => item.done).length;
-        const thisWeekOverdue = thisWeekItems.filter(item => !item.done && item.dueDate < today).length;
-        const completedPct = thisWeekTotal ? Math.round((thisWeekCompleted / thisWeekTotal) * 100) : 0;
-        const overduePct = thisWeekTotal ? Math.round((thisWeekOverdue / thisWeekTotal) * 100) : 0;
-        const isComplete = thisWeekTotal > 0 && thisWeekCompleted === thisWeekTotal;
-
-        workloadBarEl.style.width = `${completedPct}%`;
-        if (workloadOverdueEl) workloadOverdueEl.style.width = `${overduePct}%`;
-        workloadBarEl.classList.toggle('is-empty', thisWeekTotal === 0);
-        workloadBarEl.classList.toggle('is-complete', isComplete);
-
-        workloadCountEl.textContent = thisWeekTotal
-            ? `${thisWeekCompleted} / ${thisWeekTotal} done (${completedPct}%)${thisWeekOverdue > 0 ? ` · ${thisWeekOverdue} overdue` : ''}`
-            : 'Nothing due this week';
+    /* This week's progress bar (Sun–Sat): green = done, red = overdue and still open */
+    const barEl = byId("priority-workload-bar"), overdueBar = byId("priority-workload-overdue"), countEl = byId("priority-workload-count");
+    if (barEl && countEl) {
+        const { start, end } = getCurrentWeekRange(today);
+        const week = homework.filter(h => h.dueDate >= start && h.dueDate <= end);
+        const total = week.length, done = week.filter(h => h.done).length;
+        const late = week.filter(h => !h.done && h.dueDate < today).length;
+        const pct = n => total ? Math.round(n / total * 100) : 0;
+        barEl.style.width = `${pct(done)}%`;
+        if (overdueBar) overdueBar.style.width = `${pct(late)}%`;
+        barEl.classList.toggle("is-empty", total === 0);
+        barEl.classList.toggle("is-complete", total > 0 && done === total);
+        countEl.textContent = total ? `${done} / ${total} done (${pct(done)}%)${late ? ` · ${late} overdue` : ""}` : "Nothing due this week";
     }
 
-    /* Smart insight — busiest upcoming day, or an all-clear message */
+    /* Insight banner */
+    const insightEl = byId("priority-insight");
     if (insightEl) {
-        const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-        const countsByDay = {};
-        dueNext7.forEach(item => {
-            if (!countsByDay[item.dueDate]) countsByDay[item.dueDate] = [];
-            countsByDay[item.dueDate].push(item);
-        });
-
-        let busiestDate = null;
-        Object.entries(countsByDay).forEach(([dateKey, items]) => {
-            if (!busiestDate || items.length > countsByDay[busiestDate].length) busiestDate = dateKey;
-        });
-
-        const todayCount = countsByDay[today]?.length ?? 0;
-        const tomorrowKey = addDaysToDateString(today, 1);
-        const tomorrowItems = countsByDay[tomorrowKey] || [];
-        const tomorrowHasTest = tomorrowItems.some(item => item.type === 'test');
-
-        if (overdueCount > 0) {
-            insightEl.className = 'priority-insight red';
-            insightEl.innerHTML = `<strong>${overdueCount} overdue item${overdueCount === 1 ? '' : 's'}</strong> — clear these first.`;
-        } else if (busiestDate && countsByDay[busiestDate].length >= 3) {
-            const busyDayName = busiestDate === today ? 'today' : dayNames[new Date(`${busiestDate}T00:00:00`).getDay()];
-            const classCount = new Set(countsByDay[busiestDate].map(item => item.className)).size;
-            insightEl.className = 'priority-insight orange';
-            insightEl.innerHTML = `<strong>Busy ${escapeHtml(busyDayName.charAt(0).toUpperCase() + busyDayName.slice(1))}</strong> — you have ${countsByDay[busiestDate].length} assignments due across ${classCount} class${classCount === 1 ? '' : 'es'}.`;
-        } else if (tomorrowItems.length) {
-            insightEl.className = 'priority-insight yellow';
-            insightEl.innerHTML = `<strong>Tomorrow</strong> — ${tomorrowItems.length} assignment${tomorrowItems.length === 1 ? '' : 's'}${tomorrowHasTest ? ' + a test' : ''}.`;
+        const byDate = {};
+        dueNext7.forEach(h => (byDate[h.dueDate] = byDate[h.dueDate] || []).push(h));
+        const busiest = Object.keys(byDate).sort((a, b) => byDate[b].length - byDate[a].length)[0];
+        const tomorrow = byDate[addDaysToDateString(today, 1)] || [];
+        const todayCount = byDate[today]?.length ?? 0;
+        let cls, html;
+        if (overdueCount) {
+            cls = "red"; html = `<strong>${plural(overdueCount, "overdue item")}</strong> — clear these first.`;
+        } else if (busiest && byDate[busiest].length >= 3) {
+            const day = busiest === today ? "Today" : DAY_NAMES[parseDate(busiest).getDay()];
+            const classes = new Set(byDate[busiest].map(h => h.className)).size;
+            cls = "orange"; html = `<strong>Busy ${escapeHtml(day)}</strong> — you have ${byDate[busiest].length} assignments due across ${plural(classes, "class").replace("classs", "classes")}.`;
+        } else if (tomorrow.length) {
+            cls = "yellow"; html = `<strong>Tomorrow</strong> — ${plural(tomorrow.length, "assignment")}${tomorrow.some(h => h.type === "test") ? " + a test" : ""}.`;
         } else if (todayCount) {
-            insightEl.className = 'priority-insight yellow';
-            insightEl.innerHTML = `<strong>Today</strong> — ${todayCount} item${todayCount === 1 ? '' : 's'} due.`;
+            cls = "yellow"; html = `<strong>Today</strong> — ${plural(todayCount, "item")} due.`;
         } else {
-            insightEl.className = 'priority-insight green';
-            insightEl.innerHTML = `You're clear for the next 7 days. Nice.`;
+            cls = "green"; html = "You're clear for the next 7 days. Nice.";
         }
-    }
-}
-
-/* ==========================================================================
-   Assignment Calendar
-   Reads directly from the Homework Tracker's data (data.homework) — no
-   separate data source to maintain. Every assignment with a dueDate shows
-   up on its day, color-coded by priority / completion status.
-   ========================================================================== */
-
-let calendarViewDate = new Date();
-calendarViewDate.setDate(1);
-calendarViewDate.setHours(0, 0, 0, 0);
-
-function changeCalendarMonth(delta) {
-    calendarViewDate.setMonth(calendarViewDate.getMonth() + delta);
-    renderCalendar();
-}
-
-function goToCurrentCalendarMonth() {
-    calendarViewDate = new Date();
-    calendarViewDate.setDate(1);
-    calendarViewDate.setHours(0, 0, 0, 0);
-    renderCalendar();
-}
-
-function dateToKey(year, month, day) {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-function jumpToHomeworkItem(id) {
-    const homeworkSection = document.getElementById('homework');
-    if (homeworkSection) homeworkSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    setTimeout(() => {
-        const row = document.querySelector(`.homework-item[data-homework-id="${id}"]`);
-        if (row) {
-            row.classList.add('flash');
-            setTimeout(() => row.classList.remove('flash'), 1600);
-        }
-    }, 300);
-}
-
-function renderCalendar() {
-    const grid = document.getElementById('calendar-grid');
-    const label = document.getElementById('calendar-month-label');
-    if (!grid || !label) return;
-
-    const year = calendarViewDate.getFullYear();
-    const month = calendarViewDate.getMonth();
-
-    label.textContent = calendarViewDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-
-    // Group homework by due date (YYYY-MM-DD)
-    const byDate = {};
-    homework.forEach(item => {
-        if (!item.dueDate) return;
-        if (!byDate[item.dueDate]) byDate[item.dueDate] = [];
-        byDate[item.dueDate].push(item);
-    });
-
-    const firstOfMonth = new Date(year, month, 1);
-    const startOffset = firstOfMonth.getDay(); // 0 = Sunday
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const daysInPrevMonth = new Date(year, month, 0).getDate();
-    const todayKey = getTodayDateString();
-
-    const cells = [];
-
-    // Leading days from previous month
-    for (let i = 0; i < startOffset; i++) {
-        const day = daysInPrevMonth - startOffset + i + 1;
-        cells.push({ day, inMonth: false, key: null });
+        insightEl.className = `priority-insight ${cls}`;
+        insightEl.innerHTML = html;
     }
 
-    // Days of the current month
-    for (let day = 1; day <= daysInMonth; day++) {
-        cells.push({ day, inMonth: true, key: dateToKey(year, month, day) });
-    }
-
-    // Trailing days to complete the final week
-    while (cells.length % 7 !== 0) {
-        const day = cells.length - (startOffset + daysInMonth) + 1;
-        cells.push({ day, inMonth: false, key: null });
-    }
-
-    grid.innerHTML = '';
-
-    cells.forEach(cell => {
-        const cellEl = document.createElement('div');
-        cellEl.className = 'calendar-cell' + (cell.inMonth ? '' : ' outside');
-        if (cell.key === todayKey) cellEl.classList.add('is-today');
-
-        const dayNumber = document.createElement('div');
-        dayNumber.className = 'calendar-day-number';
-        dayNumber.textContent = cell.day;
-        cellEl.appendChild(dayNumber);
-
-        const items = cell.key ? (byDate[cell.key] || []) : [];
-        if (items.length) {
-            const list = document.createElement('div');
-            list.className = 'calendar-items';
-
-            const sortedItems = [...items].sort((a, b) => {
-                const doneCompare = Number(Boolean(a.done)) - Number(Boolean(b.done));
-                if (doneCompare !== 0) return doneCompare;
-                return priorityRank[computePriority(a.dueDate, a.density)] - priorityRank[computePriority(b.dueDate, b.density)];
-            });
-
-            const maxVisible = 3;
-            sortedItems.slice(0, maxVisible).forEach(item => {
-                const chip = document.createElement('button');
-                chip.type = 'button';
-                const priority = computePriority(item.dueDate, item.density);
-                chip.className = `calendar-chip ${item.done ? 'done' : priority}`;
-                chip.title = `${item.name} (${item.className})`;
-                chip.textContent = item.name;
-                chip.addEventListener('click', () => jumpToHomeworkItem(item.id));
-                list.appendChild(chip);
-            });
-
-            if (sortedItems.length > maxVisible) {
-                const more = document.createElement('div');
-                more.className = 'calendar-more';
-                more.textContent = `+${sortedItems.length - maxVisible} more`;
-                list.appendChild(more);
-            }
-
-            cellEl.appendChild(list);
-        }
-
-        grid.appendChild(cellEl);
-    });
+    window.renderOverview?.();
 }
 
+/* ---------- Schedule ---------- */
 function formatStoredTime(value) {
-    if (!value) return '';
-    const [h, m] = value.split(':').map(Number);
-    const suffix = h >= 12 ? 'PM' : 'AM';
-    const hour = h % 12 || 12;
-    return `${hour}:${String(m).padStart(2,'0')} ${suffix}`;
+    if (!value) return "";
+    const [h, m] = value.split(":").map(Number);
+    return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+}
+function timeToMinutes(time) { const [h, m] = time.split(":").map(Number); return h * 60 + m; }
+function timeToSeconds(time) { return timeToMinutes(time) * 60; }
+function getSecondsNow() { const n = new Date(); return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds(); }
+function formatCountdown(total) {
+    const s = Math.max(0, Math.round(total)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+/* Times a class uses in the current bell mode; null if it doesn't meet in that mode (Day Off only) */
+function timesFor(c) {
+    if (bellMode === "dayoff") return c.dayOffAffected ? { start: c.dayOffStart, end: c.dayOffEnd } : null;
+    if (bellMode === "hour" && c.bellAffected) return { start: c.bellStart, end: c.bellEnd };
+    return { start: c.start, end: c.end };
+}
+function getEffectiveSchedule(dayName) {
+    return customSchedule.filter(c => c.days.includes(dayName)).map(c => {
+        const t = timesFor(c);
+        return t && { name: c.name, teacher: c.teacher || "", startTime: t.start, endTime: t.end };
+    }).filter(Boolean);
 }
 
 function setBellMode(mode) {
-    bellMode = mode === 'hour' ? 'hour' : 'normal';
+    bellMode = BELL_MODES.includes(mode) ? mode : "normal";
     data.bellMode = bellMode;
     saveData();
-    document.querySelectorAll('.mode-button').forEach(button => button.classList.toggle('active', button.dataset.mode === bellMode));
+    document.querySelectorAll(".mode-button").forEach(b => b.classList.toggle("active", b.dataset.mode === bellMode));
     renderSavedSchedule();
     updateTimeRemaining();
+    window.onBellModeChange?.();
 }
 
-function toggleBellSettings() {
-    const visible = document.getElementById('bell-affected').value === 'yes';
-    document.getElementById('bell-settings').classList.toggle('visible', visible);
-    document.getElementById('bell-start').required = visible;
-    document.getElementById('bell-end').required = visible;
+function toggleSettings(selectId, boxId, inputIds) {
+    const on = byId(selectId).value === "yes";
+    byId(boxId).classList.toggle("visible", on);
+    inputIds.forEach(id => { byId(id).required = on; });
 }
-
+function toggleBellSettings() { toggleSettings("bell-affected", "bell-settings", ["bell-start", "bell-end"]); }
+function toggleDayOffSettings() { toggleSettings("dayoff-affected", "dayoff-settings", ["dayoff-start", "dayoff-end"]); }
 function clearScheduleForm() {
-    document.getElementById('schedule-form').reset();
-    document.getElementById('bell-settings').classList.remove('visible');
-    document.getElementById('bell-start').required = false;
-    document.getElementById('bell-end').required = false;
+    byId("schedule-form").reset();
+    toggleBellSettings();
+    toggleDayOffSettings();
 }
 
 function renderSavedSchedule() {
-    const container = document.getElementById('saved-schedule-list');
-    container.innerHTML = '';
+    const box = byId("saved-schedule-list");
+    box.innerHTML = "";
     if (!customSchedule.length) {
-        container.innerHTML = '<div class="schedule-empty">No classes added yet. Your schedule is a clean slate.</div>';
-        renderPriorityDashboard();
-        return;
+        box.innerHTML = '<div class="schedule-empty">No classes added yet. Your schedule is a clean slate.</div>';
     }
     customSchedule.forEach(course => {
-        const row = document.createElement('div');
-        row.className = 'saved-class';
-        const selectedStart = bellMode === 'hour' && course.bellAffected ? course.bellStart : course.start;
-        const selectedEnd = bellMode === 'hour' && course.bellAffected ? course.bellEnd : course.end;
-        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${course.teacher ? `<small class="schedule-teacher">${escapeHtml(course.teacher)}</small>` : ''}<small>${course.days.join(', ')} · ${formatStoredTime(selectedStart)}–${formatStoredTime(selectedEnd)}${course.bellAffected ? ' · Bell-specific' : ''}</small></div><button class="danger-button" type="button">Delete</button>`;
-        row.querySelector('button').addEventListener('click', () => {
-            customSchedule = customSchedule.filter(item => item.id !== course.id);
-            data.schedule = customSchedule;
-            saveData();
+        const t = timesFor(course) || { start: course.start, end: course.end };
+        const row = document.createElement("div");
+        row.className = "saved-class";
+        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${course.teacher ? `<small class="schedule-teacher">${escapeHtml(course.teacher)}</small>` : ""}<small>${course.days.join(", ")} · ${formatStoredTime(t.start)}–${formatStoredTime(t.end)}${course.bellAffected ? " · Bell-specific" : ""}${course.dayOffAffected ? " · Day off" : ""}</small></div><button class="danger-button" type="button">Delete</button>`;
+        row.querySelector("button").addEventListener("click", () => {
+            customSchedule = customSchedule.filter(c => c.id !== course.id);
+            saveSchedule();
             renderSavedSchedule();
             populateHomeworkClasses();
             updateTimeRemaining();
         });
-        container.appendChild(row);
+        box.appendChild(row);
     });
     renderPriorityDashboard();
 }
 
-document.getElementById('schedule-form').addEventListener('submit', event => {
+byId("schedule-form").addEventListener("submit", event => {
     event.preventDefault();
-    const days = [...document.querySelectorAll('.days-picker input:checked')].map(input => input.value);
-    const name = document.getElementById('schedule-class-name').value.trim();
-    const teacher = document.getElementById('schedule-teacher').value.trim();
-    const start = document.getElementById('schedule-start').value;
-    const end = document.getElementById('schedule-end').value;
-    const bellAffected = document.getElementById('bell-affected').value === 'yes';
-    const bellStart = document.getElementById('bell-start').value;
-    const bellEnd = document.getElementById('bell-end').value;
+    const v = id => byId(id).value;
+    const days = [...document.querySelectorAll(".days-picker input:checked")].map(i => i.value);
+    const name = v("schedule-class-name").trim(), start = v("schedule-start"), end = v("schedule-end");
+    const bell = v("bell-affected") === "yes", off = v("dayoff-affected") === "yes";
 
-    if (!days.length) return alert('Select at least one day.');
-    if (!name) return alert('Enter a class name.');
-    if (!start || !end || start >= end) return alert('The end time must be after the start time.');
-    if (bellAffected && (!bellStart || !bellEnd || bellStart >= bellEnd)) return alert('Enter valid bell-specific start and end times.');
+    if (!days.length) return alert("Select at least one day.");
+    if (!name) return alert("Enter a class name.");
+    if (!start || !end || start >= end) return alert("The end time must be after the start time.");
+    if (bell && (!v("bell-start") || !v("bell-end") || v("bell-start") >= v("bell-end"))) return alert("Enter valid bell-specific start and end times.");
+    if (off && (!v("dayoff-start") || !v("dayoff-end") || v("dayoff-start") >= v("dayoff-end"))) return alert("Enter valid Day Off start and end times.");
 
-    customSchedule.push({ id: Date.now() + Math.random(), name, teacher, days, start, end, bellAffected, bellStart: bellAffected ? bellStart : '', bellEnd: bellAffected ? bellEnd : '' });
-    data.schedule = customSchedule;
-    saveData();
+    customSchedule.push({
+        id: Date.now() + Math.random(), name, teacher: v("schedule-teacher").trim(), days, start, end,
+        bellAffected: bell, bellStart: bell ? v("bell-start") : "", bellEnd: bell ? v("bell-end") : "",
+        dayOffAffected: off, dayOffStart: off ? v("dayoff-start") : "", dayOffEnd: off ? v("dayoff-end") : ""
+    });
+    saveSchedule();
     clearScheduleForm();
     renderSavedSchedule();
     populateHomeworkClasses();
     updateTimeRemaining();
 });
 
-function getEffectiveSchedule(dayName) {
-    return customSchedule.filter(course => course.days.includes(dayName)).map(course => {
-        const useBell = bellMode === 'hour' && course.bellAffected;
-        return { name: course.name, teacher: course.teacher || '', startTime: useBell ? course.bellStart : course.start, endTime: useBell ? course.bellEnd : course.end };
-    });
-}
-
-function timeToMinutes(time) {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 60 + minutes;
-}
-
-function timeToSeconds(time) {
-    const [hours, minutes] = time.split(':').map(Number);
-    return hours * 3600 + minutes * 60;
-}
-
-function getSecondsNow() {
-    const now = new Date();
-    return now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-}
-
-function formatCountdown(totalSeconds) {
-    const clamped = Math.max(0, Math.round(totalSeconds));
-    const hours = Math.floor(clamped / 3600);
-    const minutes = Math.floor((clamped % 3600) / 60);
-    const seconds = clamped % 60;
-    if (hours > 0) {
-        return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-    }
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-}
-
-function getTodaySchedule() {
-    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    const dayName = dayNames[new Date().getDay()];
-    document.getElementById('day-name').textContent = `Class Schedule for ${dayName}`;
-    return getEffectiveSchedule(dayName);
-}
-
-function updateCurrentClassTimer(className, remainingSeconds) {
-    const timerEl = document.getElementById('current-class-timer');
-    if (!timerEl) return;
-
-    if (className && remainingSeconds != null) {
-        timerEl.textContent = `${className} — in session`;
-        document.title = `${formatCountdown(remainingSeconds)} · Palumbo Student Interface`;
-    } else {
-        timerEl.textContent = 'No class in session';
-        document.title = 'Palumbo Student Interface';
-    }
+/* ---------- Today's classes + countdown ---------- */
+function updateCurrentClassTimer(className, remaining) {
+    const el = byId("current-class-timer");
+    if (!el) return;
+    el.textContent = className ? `${className} — in session` : "No class in session";
+    document.title = className ? `${formatCountdown(remaining)} · Palumbo Student Interface` : "Palumbo Student Interface";
 }
 
 function updateTimeRemaining() {
-    const currentSeconds = getSecondsNow();
-    const todaySchedule = getTodaySchedule().sort((a,b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-    const classList = document.getElementById('class-list');
-    classList.innerHTML = '';
+    const now = getSecondsNow();
+    const dayName = DAY_NAMES[new Date().getDay()];
+    byId("day-name").textContent = `Class Schedule for ${dayName}`;
+    const today = getEffectiveSchedule(dayName).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
+    const list = byId("class-list");
+    list.innerHTML = "";
 
-    let currentClassName = null;
-    let currentClassRemaining = null;
-
-    if (!todaySchedule.length) {
-        classList.innerHTML = '<div class="schedule-empty">No classes scheduled for today.</div>';
-        updateCurrentClassTimer(null, null);
-        return;
+    if (!today.length) {
+        list.innerHTML = '<div class="schedule-empty">No classes scheduled for today.</div>';
+        return updateCurrentClassTimer(null, null);
     }
 
-    todaySchedule.forEach(course => {
-        const start = timeToSeconds(course.startTime);
-        const end = timeToSeconds(course.endTime);
-        const current = currentSeconds >= start && currentSeconds < end;
-        let remaining = 'Not in Session';
-
+    let currentName = null, currentLeft = null;
+    today.forEach(c => {
+        const start = timeToSeconds(c.startTime), end = timeToSeconds(c.endTime);
+        const current = now >= start && now < end;
+        let remaining = "Not in Session";
         if (current) {
-            const remainingSeconds = end - currentSeconds;
-            remaining = `${formatCountdown(remainingSeconds)} remaining`;
-            currentClassName = course.name;
-            currentClassRemaining = remainingSeconds;
-        } else if (currentSeconds < start) {
-            remaining = `${Math.ceil((start - currentSeconds) / 60)} min until start`;
+            currentName = c.name; currentLeft = end - now;
+            remaining = `${formatCountdown(currentLeft)} remaining`;
+        } else if (now < start) {
+            remaining = `${Math.ceil((start - now) / 60)} min until start`;
         }
-
-        const row = document.createElement('div');
-        row.className = `schedule-item${current ? ' current-class' : ''}`;
-        row.innerHTML = `<div class="schedule-class-name">${escapeHtml(course.name)}${course.teacher ? `<small class="schedule-teacher">${escapeHtml(course.teacher)}</small>` : ''}</div><div class="schedule-time">${formatStoredTime(course.startTime)}</div><div class="schedule-time">${formatStoredTime(course.endTime)}</div><div class="schedule-remaining">${remaining}</div>`;
-        classList.appendChild(row);
+        const row = document.createElement("div");
+        row.className = `schedule-item${current ? " current-class" : ""}`;
+        row.innerHTML = `<div class="schedule-class-name">${escapeHtml(c.name)}${c.teacher ? `<small class="schedule-teacher">${escapeHtml(c.teacher)}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining">${remaining}</div>`;
+        list.appendChild(row);
     });
-
-    updateCurrentClassTimer(currentClassName, currentClassRemaining);
+    updateCurrentClassTimer(currentName, currentLeft);
 }
 
+/* ---------- Greeting, clock, weather ---------- */
 const greetings = {
     morning: [
         'Good morning. Unfortunately, you have to be a functional member of society today.',
@@ -1060,7 +619,6 @@ const greetings = {
         'Morning, nerd. Please refrain from committing academic malpractice.',
         'Good morning. Your alarm clock has once again defeated you.'
     ],
-
     afternoon: [
         'Good afternoon. Still pretending you know what’s going on?',
         'Afternoon already? Lock in before your frontal cortex clocks out.',
@@ -1073,7 +631,6 @@ const greetings = {
         'Good afternoon, scholar. Please stop letting your last two brain cells carry the group project.',
         'Afternoon already? Crazy. You still look unemployed.'
     ],
-
     evening: [
         'Good evening. The sun is down, but your missing assignments are not.',
         'Evening, nerd. The homework demons have come to collect.',
@@ -1086,7 +643,6 @@ const greetings = {
         'Good evening! Time to discover that “I’ll do it later” was, in fact, a lie.',
         'Another day, another opportunity to disappoint the periodic table.'
     ],
-
     night: [
         'Good night. Your neurons are requesting unpaid leave.',
         'It’s late, nerd. Go recharge your biological motherboard.',
@@ -1101,82 +657,48 @@ const greetings = {
     ]
 };
 function getDailyGreeting() {
-    const hour = new Date().getHours();
-
-    let greetingsForTime;
-
-    if (hour < 12) {
-        greetingsForTime = greetings.morning;
-    } else if (hour < 17) {
-        greetingsForTime = greetings.afternoon;
-    } else if (hour < 21) {
-        greetingsForTime = greetings.evening;
-    } else {
-        greetingsForTime = greetings.night;
-    }
-
-    return greetingsForTime[
-        Math.floor(Math.random() * greetingsForTime.length)
-    ];
+    const h = new Date().getHours();
+    const pool = greetings[h < 12 ? "morning" : h < 17 ? "afternoon" : h < 21 ? "evening" : "night"];
+    return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function updateClock() {
     const now = new Date();
-    document.getElementById('clock').textContent = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    const priorityDateEl = document.getElementById('priority-date');
-    if (priorityDateEl) {
-        priorityDateEl.textContent = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(now);
-    }
+    byId("clock").textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const dateEl = byId("priority-date");
+    if (dateEl) dateEl.textContent = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(now);
 }
 
-/* Weather — one client-side fetch to Open-Meteo (no API key required). Uses
-   the browser's location when granted, otherwise falls back to Philadelphia
-   since that's where Palumbo is. Refreshed every 30 minutes, not every
-   second, since weather doesn't change that fast. */
-const WEATHER_CODE_LABELS = {
-    0: 'Clear', 1: 'Mostly Clear', 2: 'Partly Cloudy', 3: 'Cloudy',
-    45: 'Foggy', 48: 'Foggy',
-    51: 'Light Drizzle', 53: 'Drizzle', 55: 'Heavy Drizzle',
-    61: 'Light Rain', 63: 'Rain', 65: 'Heavy Rain',
-    66: 'Freezing Rain', 67: 'Freezing Rain',
-    71: 'Light Snow', 73: 'Snow', 75: 'Heavy Snow', 77: 'Snow Grains',
-    80: 'Rain Showers', 81: 'Rain Showers', 82: 'Heavy Showers',
-    85: 'Snow Showers', 86: 'Snow Showers',
-    95: 'Thunderstorms', 96: 'Thunderstorms', 99: 'Thunderstorms'
+/* Open-Meteo (no API key). Uses the browser's location, falling back to Philadelphia. */
+const WEATHER_LABELS = {
+    0: "Clear", 1: "Mostly Clear", 2: "Partly Cloudy", 3: "Cloudy", 45: "Foggy", 48: "Foggy",
+    51: "Light Drizzle", 53: "Drizzle", 55: "Heavy Drizzle", 61: "Light Rain", 63: "Rain", 65: "Heavy Rain",
+    66: "Freezing Rain", 67: "Freezing Rain", 71: "Light Snow", 73: "Snow", 75: "Heavy Snow", 77: "Snow Grains",
+    80: "Rain Showers", 81: "Rain Showers", 82: "Heavy Showers", 85: "Snow Showers", 86: "Snow Showers",
+    95: "Thunderstorms", 96: "Thunderstorms", 99: "Thunderstorms"
 };
-
 async function fetchWeather(lat, lon) {
-    const weatherEl = document.getElementById('priority-weather');
-    if (!weatherEl) return;
+    const el = byId("priority-weather");
+    if (!el) return;
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`;
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Weather request failed');
-        const json = await response.json();
-        const temp = Math.round(json.current.temperature_2m);
-        const label = WEATHER_CODE_LABELS[json.current.weather_code] || 'Unknown';
-        weatherEl.textContent = `${temp}°F · ${label}`;
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
+        if (!res.ok) throw new Error("Weather request failed");
+        const { current } = await res.json();
+        el.textContent = `${Math.round(current.temperature_2m)}°F · ${WEATHER_LABELS[current.weather_code] || "Unknown"}`;
     } catch {
-        weatherEl.textContent = 'Weather unavailable';
+        el.textContent = "Weather unavailable";
     }
 }
-
 function loadWeather() {
-    const fallback = { lat: 39.9526, lon: -75.1652 }; // Philadelphia, PA
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            position => fetchWeather(position.coords.latitude, position.coords.longitude),
-            () => fetchWeather(fallback.lat, fallback.lon),
-            { timeout: 5000 }
-        );
-    } else {
-        fetchWeather(fallback.lat, fallback.lon);
-    }
+    const fallback = () => fetchWeather(39.9526, -75.1652);
+    if (!navigator.geolocation) return fallback();
+    navigator.geolocation.getCurrentPosition(p => fetchWeather(p.coords.latitude, p.coords.longitude), fallback, { timeout: 5000 });
 }
 
-/* Initial render */
-document.querySelectorAll('.mode-button').forEach(button => button.classList.toggle('active', button.dataset.mode === bellMode));
-document.getElementById('greeting').textContent = getDailyGreeting();
+/* ---------- Initial render ---------- */
+document.querySelectorAll(".mode-button").forEach(b => b.classList.toggle("active", b.dataset.mode === bellMode));
+byId("greeting").textContent = getDailyGreeting();
+byId("homework-due").min = getTodayDateString();
 applyGpaVisibility();
 loadSatInputs();
 renderClasses();
@@ -1185,87 +707,11 @@ renderTasks();
 maybeAutoClearCompletedHomework();
 renderHomework();
 renderSavedSchedule();
-renderCalendar();
 updateClock();
-document.getElementById('homework-due').min = getTodayDateString();
 updateTimeRemaining();
-renderPriorityDashboard();
 loadWeather();
 setInterval(updateClock, 1000);
 setInterval(updateTimeRemaining, 1000);
 setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);
 setInterval(maybeResetDailyTasks, 60 * 1000);
 setInterval(loadWeather, 30 * 60 * 1000);
-
-
-// Highlight the sidebar link for the section currently in view.
-const sidebarLinks = [...document.querySelectorAll('.sidebar a[href^="#"]')];
-const content = document.querySelector('.content');
-
-function updateActiveSidebarLink() {
-    if (!sidebarLinks.length || !content) return;
-
-    const contentTop = content.getBoundingClientRect().top;
-    const marker = contentTop + 140;
-
-    let activeLink = sidebarLinks[0];
-
-    sidebarLinks.forEach(link => {
-        const target = document.querySelector(link.getAttribute('href'));
-
-        if (!target) return;
-
-        const targetTop = target.getBoundingClientRect().top;
-
-        if (targetTop <= marker) {
-            activeLink = link;
-        }
-    });
-
-    sidebarLinks.forEach(link => {
-        link.classList.toggle('active', link === activeLink);
-    });
-}
-
-/* Update while scrolling the main content */
-if (content) {
-    content.addEventListener('scroll', updateActiveSidebarLink, {
-        passive: true
-    });
-}
-
-/* Update when clicking a sidebar link */
-sidebarLinks.forEach(link => {
-    link.addEventListener('click', () => {
-        setTimeout(updateActiveSidebarLink, 100);
-    });
-});
-
-/* Initial state */
-updateActiveSidebarLink();
-// Delete completed daily tasks
-function deleteCompletedTasks() {
-    if (!tasks || tasks.length === 0) {
-        return;
-    }
-
-    const completedCount = tasks.filter(task => task.done).length;
-
-    if (completedCount === 0) {
-        alert("There are no completed tasks to delete.");
-        return;
-    }
-    
-    const confirmed = confirm(
-        `Delete ${completedCount} completed task${completedCount === 1 ? "" : "s"}?`
-    );
-
-    if (!confirmed) {
-        return;
-    }
-
-    tasks = tasks.filter(task => !task.done);
-
-    saveTasks();
-    renderTasks();
-}
