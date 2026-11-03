@@ -18,7 +18,7 @@
   --warn-bg: rgba(255, 220, 130, .18);
   --gold: #ffcf86;
   --progress-a: var(--accent);
-  --progress-b: var(--gold);
+  --progress-b: var(--accent);
   --pill-dark: rgba(0, 20, 20, .55);
   --safe: #9be9b3;
   --safe-bg: rgba(155, 233, 179, .18);
