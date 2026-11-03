@@ -66,7 +66,7 @@ ov.className = 'ui-panel overview'; ov.id = 'overview';
 
 $('.dashboard-hero').after(ov);
 
-$('.footer-version').textContent = 'Palumbo Student Interface v3.0.0';
+$('.footer-version').textContent = 'Palumbo Student Interface v3.1.4';
 
 /* ---------- Dock ---------- */
 
