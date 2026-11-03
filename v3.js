@@ -89,7 +89,7 @@ function renderOverview() {
   ov.innerHTML = `
     <div class="panel-heading"><div class="panel-heading-main"><h2>Today's Overview</h2></div></div>
     <div class="ov-stats">
-      <div class="ov-stat {overdue ? 'bad' : ''}"><b>{dueToday}</b><span>due today{overdue ? ` · ${overdue} overdue` : ''}</span></div>
+      <div class="ov-stat ${overdue ? 'bad' : ''}"><b>{dueToday}</b><span>due today{overdue ? ` · ${overdue} overdue` : ''}</span></div>
       <div class="ov-stat ${testsTmrw ? 'warn' : ''}"><b>${testsTmrw}</b><span>test${testsTmrw === 1 ? '' : 's'} tomorrow</span></div>
       <div class="ov-stat"><b>${next ? escapeHtml(formatStoredTime(next.startTime)) : '—'}</b><span>${next ? `next: ${escapeHtml(next.name)}` : 'no more classes today'}</span></div>
       <div class="ov-stat"><b>${tasks.filter(t => t.done).length}/${tasks.length}</b><span>daily tasks done</span></div>
@@ -618,7 +618,7 @@ function renderSideWidgets() {
       ['Colleges', C.colleges.length],
       ['Essays in progress', C.essays.filter(e => ['Outlining', 'Drafting', 'Revising'].includes(e.status)).length],
       ['Upcoming deadlines', deadlineRows().filter(r => r.n >= 0 && !SUBMITTED.includes(r.c.status)).length]], avg);
-  } } else if (current === 'gym') {
+  } else if (current === 'gym') {
     h = window.gymSide ? window.gymSide() : '';
 }
   sw.innerHTML = h;
