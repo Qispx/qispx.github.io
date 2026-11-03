@@ -7,8 +7,26 @@ const KEY = 'studentDashboardGymV1';
 const uid = () => Date.now() + Math.random();
 
 let G = { workouts: [], next: 0, log: [], weights: [], unit: 'lb', goal: { perWeek: 4, weight: null }, session: { wid: null, done: [] } };
-try { const s = JSON.parse(localStorage.getItem(KEY)); if (s) G = Object.assign(G, s, { goal: Object.assign(G.goal, s.goal || {}) }); } catch {}
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch {} };
+try {
+  const s = JSON.parse(localStorage.getItem(KEY));
+  if (s && typeof s === 'object') G = Object.assign(G, s, { goal: Object.assign(G.goal, s.goal || {}) });
+} catch {}
+G.workouts = Array.isArray(G.workouts) ? G.workouts.filter(w => w && typeof w === 'object').map(w => ({
+  ...w,
+  id: w.id ?? uid(),
+  name: String(w.name ?? 'Untitled'),
+  exercises: Array.isArray(w.exercises) ? w.exercises.filter(x => x && typeof x === 'object').map(x => ({ ...x, id: x.id ?? uid() })) : []
+})) : [];
+G.log = Array.isArray(G.log) ? G.log.filter(x => x && typeof x === 'object' && typeof x.date === 'string') : [];
+G.weights = Array.isArray(G.weights) ? G.weights.filter(x => x && typeof x === 'object' && typeof x.date === 'string' && Number.isFinite(Number(x.v))).map(x => ({ ...x, v: Number(x.v) })) : [];
+G.unit = G.unit === 'kg' ? 'kg' : 'lb';
+G.goal = G.goal && typeof G.goal === 'object' ? G.goal : { perWeek: 4, weight: null };
+G.goal.perWeek = Math.min(7, Math.max(1, Number(G.goal.perWeek) || 4));
+G.goal.weight = G.goal.weight == null || G.goal.weight === '' ? null : (Number.isFinite(Number(G.goal.weight)) ? Number(G.goal.weight) : null);
+G.next = Number.isInteger(Number(G.next)) && G.workouts.length ? ((Number(G.next) % G.workouts.length) + G.workouts.length) % G.workouts.length : 0;
+G.session = G.session && typeof G.session === 'object' ? G.session : { wid: null, done: [] };
+G.session.done = Array.isArray(G.session.done) ? G.session.done : [];
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(G)); } catch (err) { console.warn('Could not save Gym data:', err); } };
 
 const today = () => getTodayDateString();
 const shortDate = d => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -32,7 +50,7 @@ function streak() {
 }
 const sortedWeights = () => [...G.weights].sort((a, b) => a.date.localeCompare(b.date));
 const curIdx = () => G.workouts.length ? G.next % G.workouts.length : 0;
-const detail = x => `${x.sets || '–'} × ${x.reps || '–'}${x.weight ? ` · ${x.weight} ${G.unit}` : ''}`;
+const detail = x => `${x.sets || '–'} × ${x.reps || '–'}${x.weight ? ` · ${Number.isFinite(Number(x.weight)) ? Number(x.weight).toFixed(1) : esc(x.weight)} ${G.unit}` : ''}`;
 
 const PRESET = [
   ['Push', [['Bench Press', 4, '8'], ['Overhead Press', 3, '10'], ['Incline Dumbbell Press', 3, '10'], ['Lateral Raises', 3, '15'], ['Triceps Pushdown', 3, '12']]],
@@ -91,13 +109,15 @@ function renderHero() {
   }
 
   if (G.session.wid !== w.id) G.session = { wid: w.id, done: [] };
+  const validIds = new Set(w.exercises.map(x => String(x.id)));
+  G.session.done = [...new Set(G.session.done.map(String))].filter(id => validIds.has(id));
   const done = new Set(G.session.done), n = w.exercises.length;
   const ready = n > 0 && done.size >= n;
   el.innerHTML = head('Today\u2019s Workout') + `
     <div class="gym-hero-top"><div><span class="gym-eyebrow">Up next \u00b7 ${i + 1} of ${W.length} in rotation</span><h3 class="gym-name">${esc(w.name)}</h3></div><div class="gym-count" id="gym-cnt">${done.size} / ${n}</div></div>
     ${strip}
     <div class="gym-ex-list">${n ? w.exercises.map(x => exRow(x, done.has(x.id))).join('') : '<div class="col-empty">No exercises in this workout yet. Add some in the editor below.</div>'}</div>
-    <div class="gym-cwrap"><button type="button" class="gym-complete${ready ? ' ready' : ''}" data-g="complete"><span class="ring">${CHK}</span><span>Complete workout</span></button></div>
+    <div class="gym-cwrap"><button type="button" class="gym-complete${ready ? ' ready' : ''}" data-g="complete"${ready ? '' : ' disabled'} aria-disabled="${!ready}"><span class="ring">${CHK}</span><span>${ready ? 'Complete workout' : 'Complete all exercises first'}</span></button></div>
     ${G.log.length ? '<div class="gym-btn-row" style="margin-top:12px"><button type="button" class="secondary-button" data-g="undo">Undo last workout</button></div>' : ''}`;
 }
 
@@ -110,9 +130,14 @@ function burst(host) {
   }
 }
 function completeWorkout(btn) {
-  if (btn.dataset.busy) return; btn.dataset.busy = '1';
+  if (btn.dataset.busy) return;
   const W = G.workouts, i = curIdx(), w = W[i];
-  G.log.push({ id: uid(), date: today(), wid: w.id, name: w.name, done: G.session.wid === w.id ? G.session.done.length : 0, total: w.exercises.length });
+  if (!w || !w.exercises.length) return alert('Add at least one exercise before completing this workout.');
+  const completed = G.session.wid === w.id ? new Set(G.session.done.map(String)) : new Set();
+  const allDone = w.exercises.every(x => completed.has(String(x.id)));
+  if (!allDone) return alert('Check off every exercise before completing this workout.');
+  btn.dataset.busy = '1';
+  G.log.push({ id: uid(), date: today(), wid: w.id, name: w.name, done: w.exercises.length, total: w.exercises.length });
   G.next = (i + 1) % W.length;
   G.session = { wid: null, done: [] };
   showAnyway = false; save();
@@ -198,13 +223,16 @@ function renderWeight() {
   const change = W.length > 1 ? last.v - first.v : null;
   let prog = '';
   if (gw && W.length) {
-    const span = first.v - gw, pct = span === 0 ? (last.v === gw ? 100 : 0) : Math.max(0, Math.min(100, Math.round((first.v - last.v) / span * 100)));
+    const span = gw - first.v;
+    const pct = span === 0
+      ? (last.v === gw ? 100 : 0)
+      : Math.max(0, Math.min(100, Math.round((last.v - first.v) / span * 100)));
     prog = `<div class="col-track"><div class="col-fill" style="width:${pct}%"></div></div><div class="pct" style="color:#fff;font-weight:800;margin:8px 0 var(--space-4)">${pct}% of the way from ${first.v} to ${gw} ${u}</div>`;
   } else prog = '<p class="gym-sub" style="margin:0 0 var(--space-4)">Set a goal weight to see a progress bar.</p>';
   const fmt = n => (n > 0 ? '+' : '') + n.toFixed(1);
   el.innerHTML = `<div class="panel-heading"><div class="panel-heading-main"><h2>Weight Tracking</h2></div></div>
     <div class="ov-stats">
-      <div class="ov-stat"><b>${last ? last.v : '\u2014'}</b><span>current (${u})</span></div>
+      <div class="ov-stat"><b>${last ? Number(last.v).toFixed(1) : '\u2014'}</b><span>current (${u})</span></div>
       <div class="ov-stat"><b>${change == null ? '\u2014' : fmt(change)}</b><span>change since start</span></div>
       <div class="ov-stat"><b>${gw && last ? Math.abs(last.v - gw).toFixed(1) : '\u2014'}</b><span>${gw && last ? 'to goal' : 'no goal set'}</span></div>
     </div>
@@ -217,7 +245,7 @@ function renderWeight() {
       <label>Unit<select data-g-input="unit"><option${u === 'lb' ? ' selected' : ''}>lb</option><option${u === 'kg' ? ' selected' : ''}>kg</option></select></label>
     </div>
     ${weightChart(W)}
-    ${W.length ? `<div class="gym-wlist">${[...W].reverse().slice(0, 6).map(x => `<div class="gym-wrow"><span>${x.v} ${u}</span><small>${shortDate(x.date)}</small><button type="button" class="danger-button" data-g="wdel" data-date="${x.date}" aria-label="Delete entry">\u00d7</button></div>`).join('')}</div>` : ''}`;
+    ${W.length ? `<div class="gym-wlist">${[...W].reverse().slice(0, 6).map(x => `<div class="gym-wrow"><span>${Number(x.v).toFixed(1)} ${u}</span><small>${shortDate(x.date)}</small><button type="button" class="danger-button" data-g="wdel" data-date="${x.date}" aria-label="Delete entry">\u00d7</button></div>`).join('')}</div>` : ''}`;
 }
 
 /* ---------- Workout editor ---------- */
@@ -319,7 +347,22 @@ root.addEventListener('change', e => {
   const gi = t.dataset?.gInput; if (!gi) return;
   if (gi === 'goal') { G.goal.perWeek = Math.min(7, Math.max(1, Number(t.value) || 1)); save(); refresh(); }
   else if (gi === 'goalw') { G.goal.weight = t.value === '' ? null : Number(t.value); save(); refresh(); }
-  else if (gi === 'unit') { G.unit = t.value; save(); refresh(); renderEditor(); }
+  else if (gi === 'unit') {
+    const nextUnit = t.value;
+    if (nextUnit !== G.unit && ['lb', 'kg'].includes(nextUnit)) {
+      const factor = G.unit === 'lb' && nextUnit === 'kg' ? 0.45359237 : 1 / 0.45359237;
+      const convert = value => {
+        if (value === '' || value == null) return value;
+        const n = Number(value);
+        return Number.isFinite(n) ? n * factor : value;
+      };
+      G.weights = G.weights.map(x => ({ ...x, v: convert(x.v) }));
+      G.goal.weight = convert(G.goal.weight);
+      G.workouts.forEach(w => w.exercises.forEach(x => { x.weight = convert(x.weight); }));
+      G.unit = nextUnit;
+      save(); refresh(); renderEditor();
+    }
+  }
 });
 
 /* Sidebar summary (called by v3.js when the Gym tab is active) */
