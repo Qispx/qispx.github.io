@@ -1,0 +1,108 @@
+/* Palumbo Student Interface — Gym tab (layered on style.css + v3.css tokens) */
+
+.gym-panel { margin-bottom: var(--space-5); }
+.gym-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-bottom: var(--space-5); }
+.gym-grid > .ui-panel { margin-bottom: 0; }
+@media (max-width: 900px) { .gym-grid { grid-template-columns: 1fr; } }
+
+/* ---------- Up Next hero ---------- */
+.gym-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+.gym-eyebrow { color: var(--sub-color); font-size: var(--sub-size); font-weight: 700; letter-spacing: .02em; }
+.gym-name { margin: 4px 0 0; color: #fff; font-size: var(--text-2xl); line-height: 1.1; }
+.gym-count { color: var(--accent); font-size: var(--text-lg); font-weight: 800; white-space: nowrap; }
+
+.gym-rot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: var(--space-4); }
+.gym-pill { min-height: 34px; padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: rgba(0, 20, 20, .45); color: var(--sub-color); font-size: var(--sub-size); font-weight: 700; }
+.gym-pill:hover { background: rgba(94, 236, 215, .14); color: #fff; }
+.gym-pill.cur { background: var(--accent); color: var(--bg); }
+.gym-pill.last:not(.cur) { box-shadow: inset 0 0 0 1px rgba(155, 233, 179, .45); color: var(--safe, #9be9b3); }
+.gym-arrow { color: var(--muted); font-size: var(--sub-size); }
+
+.gym-ex-list { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.gym-chk { display: flex; align-items: center; gap: var(--space-3); padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: rgba(0, 128, 128, .38); cursor: pointer; transition: background var(--transition-base), border-color var(--transition-base); }
+.gym-chk:hover { border-color: rgba(94, 236, 215, .35); }
+.gym-chk input { position: absolute; opacity: 0; pointer-events: none; }
+.gym-chk .box { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border: 2px solid rgba(255, 255, 255, .35); border-radius: 50%; transition: background .25s ease, border-color .25s ease, transform .25s cubic-bezier(.2, 1.6, .4, 1); }
+.gym-chk .box svg { width: 16px; height: 16px; }
+.gym-chk .box path { fill: none; stroke: var(--bg); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .3s ease .08s; }
+.gym-chk.on { background: rgba(94, 236, 215, .14); border-color: rgba(94, 236, 215, .4); }
+.gym-chk.on .box { background: var(--accent); border-color: var(--accent); transform: scale(1.08); }
+.gym-chk.on .box path { stroke-dashoffset: 0; }
+.gym-chk input:focus-visible + .box { outline: 2px solid #fff; outline-offset: 2px; }
+.gym-chk .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; color: #fff; font-weight: 700; }
+.gym-chk.on .nm { text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, .4); color: var(--sub-on-card, #ecfffc); }
+.gym-chk small { color: var(--sub-on-card, #ecfffc); font-size: var(--sub-size); font-weight: 600; white-space: nowrap; }
+
+.gym-done-note { display: flex; align-items: center; gap: 12px; margin-bottom: var(--space-4); padding: 14px 16px; border-radius: var(--radius-sm); background: var(--safe-bg, rgba(155, 233, 179, .18)); color: var(--safe, #9be9b3); font-weight: 700; box-shadow: inset 0 0 0 1px rgba(155, 233, 179, .3); }
+.gym-done-note svg { width: 22px; height: 22px; flex-shrink: 0; }
+.gym-preview { margin: 0 0 var(--space-4); padding: 0; list-style: none; color: var(--sub-color); font-size: var(--sub-size); display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px 16px; }
+.gym-preview li::before { content: '\2022'; margin-right: 8px; color: var(--accent); }
+.gym-btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* Fancy complete button */
+.gym-cwrap { position: relative; }
+.gym-complete { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; min-height: 64px; padding: 0 20px; border: 2px solid rgba(94, 236, 215, .35); border-radius: var(--radius-pill); background: rgba(94, 236, 215, .08); color: var(--accent); font-size: var(--text-md); font-weight: 800; transition: background .3s ease, color .3s ease, border-color .3s ease, transform .15s ease, box-shadow .3s ease; }
+.gym-complete:hover { background: rgba(94, 236, 215, .18); color: #fff; }
+.gym-complete:active { transform: scale(.98); }
+.gym-complete .ring { display: grid; place-items: center; width: 34px; height: 34px; border: 2px solid currentColor; border-radius: 50%; transition: background .3s ease, border-color .3s ease, transform .35s cubic-bezier(.2, 1.6, .4, 1); }
+.gym-complete .ring svg { width: 18px; height: 18px; }
+.gym-complete .ring path { fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .35s ease .1s; }
+.gym-complete.ready { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(94, 236, 215, .12), 0 8px 24px rgba(94, 236, 215, .18); }
+.gym-complete.ready .ring path { stroke-dashoffset: 0; }
+.gym-complete.popped { background: var(--accent); border-color: var(--accent); color: var(--bg); pointer-events: none; }
+.gym-complete.popped .ring { transform: scale(1.2); }
+.gym-complete.popped .ring path { stroke-dashoffset: 0; }
+.gym-spark { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--accent); pointer-events: none; animation: gymSpark .8s ease-out forwards; }
+.gym-spark:nth-child(3n) { background: #ffcf86; }
+.gym-spark:nth-child(3n+1) { background: #fff; width: 6px; height: 6px; }
+@keyframes gymSpark { from { opacity: 1; transform: translate(0, 0) scale(1); } to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.3); } }
+
+/* ---------- Weekly ---------- */
+.gym-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: var(--space-4); }
+.gym-day { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 2px; border-radius: 10px; background: rgba(0, 20, 20, .35); color: var(--sub-color); font-size: var(--sub-size-xs); font-weight: 700; }
+.gym-day .dc { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .2); }
+.gym-day .dc svg { width: 14px; height: 14px; }
+.gym-day .dc path { fill: none; stroke: var(--bg); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.gym-day.hit .dc { background: var(--accent); border-color: var(--accent); }
+.gym-day.hit { color: #fff; }
+.gym-day.today { box-shadow: inset 0 0 0 1px var(--accent); }
+.gym-day small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 600; color: var(--sub-color); }
+.gym-goal { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-2); color: #fff; font-weight: 700; }
+.gym-goal .stepper { margin-left: auto; }
+.gym-chart { display: block; width: 100%; height: auto; margin-top: var(--space-4); }
+.gym-chart text { fill: var(--sub-color); font-size: 11px; font-weight: 600; }
+.gym-sub { margin: var(--space-4) 0 0; color: var(--sub-color); font-size: var(--sub-size); font-weight: 700; }
+
+/* ---------- Calendar ---------- */
+.gym-cal-nav { display: flex; align-items: center; gap: var(--space-2); }
+.gym-cal-nav span { min-width: 140px; text-align: center; color: #fff; font-weight: 800; }
+.gym-cal-head, .gym-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.gym-cal-head { margin-bottom: 6px; color: var(--sub-color); font-size: var(--sub-size-xs); font-weight: 700; text-align: center; }
+.gym-cell { min-height: 64px; padding: 6px; border: 1px solid rgba(94, 236, 215, .08); border-radius: 9px; background: rgba(0, 128, 128, .22); font-size: var(--sub-size-xs); font-weight: 700; color: var(--sub-color); }
+.gym-cell.blank { background: transparent; border-color: transparent; }
+.gym-cell.today { border-color: var(--accent); }
+.gym-cell.hit { background: rgba(94, 236, 215, .2); border-color: rgba(94, 236, 215, .5); color: #fff; }
+.gym-cell em { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-style: normal; font-size: 11px; }
+@media (max-width: 700px) { .gym-cell { min-height: 52px; padding: 4px; } .gym-cell em { font-size: 9px; } .gym-cal-nav span { min-width: 100px; } }
+
+/* ---------- Weight ---------- */
+.gym-wform { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); margin-bottom: var(--space-4); }
+.gym-wform label { display: flex; flex-direction: column; gap: 6px; color: var(--sub-color); font-size: var(--sub-size); font-weight: 600; }
+.gym-wform input, .gym-wform select { min-height: 42px; }
+.gym-wlist { margin-top: var(--space-4); }
+.gym-wrow { display: flex; align-items: center; gap: var(--space-3); padding: 10px 14px; margin-bottom: var(--space-2); border-radius: var(--radius-sm); background: rgba(0, 128, 128, .38); border: 1px solid var(--border); font-weight: 700; }
+.gym-wrow small { margin-left: auto; color: var(--sub-on-card, #ecfffc); font-weight: 600; }
+.gym-wrow button { min-height: 30px; padding: 2px 8px; }
+
+/* ---------- Editor ---------- */
+.gym-ex { display: grid; grid-template-columns: minmax(0, 2fr) 70px 80px 90px 36px; gap: var(--space-2); align-items: end; margin-bottom: var(--space-2); }
+.gym-ex label { display: flex; flex-direction: column; gap: 4px; color: var(--sub-color); font-size: var(--sub-size-xs); font-weight: 600; min-width: 0; }
+.gym-ex input { width: 100%; min-height: 40px; }
+.gym-ex .x { min-height: 40px; padding: 0; }
+.gym-ed-name { display: block; margin-bottom: var(--space-3); color: var(--sub-color); font-size: var(--sub-size); font-weight: 600; }
+.gym-ed-name input { width: 100%; margin-top: 6px; min-height: 42px; }
+@media (max-width: 700px) {
+  .gym-ex { grid-template-columns: 1fr 1fr; padding: 10px; border-radius: var(--radius-sm); background: rgba(0, 20, 20, .3); }
+  .gym-ex label:first-child { grid-column: 1 / -1; }
+  .gym-ex .x { grid-column: 1 / -1; }
+}
