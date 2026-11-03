@@ -618,13 +618,12 @@ function renderSideWidgets() {
       ['Colleges', C.colleges.length],
       ['Essays in progress', C.essays.filter(e => ['Outlining', 'Drafting', 'Revising'].includes(e.status)).length],
       ['Upcoming deadlines', deadlineRows().filter(r => r.n >= 0 && !SUBMITTED.includes(r.c.status)).length]], avg);
-  }
-  sw.innerHTML = h;
-  } else if (current === 'gym') {
+  } } else if (current === 'gym') {
     h = window.gymSide ? window.gymSide() : '';
 }
-  window.renderSideWidgets = renderSideWidgets;
+  sw.innerHTML = h;
 }
+window.renderSideWidgets = renderSideWidgets;
 
 /* Events don't need a class: relax the Class field and offer a "No class" choice */
 const hwType = $('#homework-type'), hwClass = $('#homework-class');
