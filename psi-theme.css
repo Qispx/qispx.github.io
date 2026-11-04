@@ -1,0 +1,99 @@
+/* psi-theme.css — Palumbo Teal × Midnight. Load AFTER psi.css (same selectors, later wins).
+   Replaces the palette and material tokens only; no component rules are removed, so every class the JS
+   generates keeps working. Anchor brand colour: #008080.
+   Light: bright, airy, cool-white. Dark: deep navy-teal surfaces with brighter teal accents (not an inversion).
+   Rows are quiet by default (hairline separators, soft hover); tonal fills are reserved for interactive tiles. */
+
+/* ===== Light (default; also forced by [data-theme=light]) ===== */
+:root{
+  color-scheme:light;
+  --bg:#F5FAFC; --surface:#FFFFFF; --surface-2:#EDF5F6; --elevated:#FFFFFF; --deep:var(--surface);
+  --teal-surface:#DDF2EF; --teal-surface-2:#B9DEDA; --blue-surface:#E3EEF4;
+  --border:#D3E5E5; --border-strong:#B3CDCE; --hair:rgba(23,56,63,.10); --hover:rgba(0,128,128,.08);
+  --control:#6A9597;
+  --text:#17383F; --text-2:#456369; --text-3:#58767A;
+  --brand:#008080; --accent:#008080; --accent-hover:#006B6B; --accent-ink:#006666;
+  --teal-2:#348F91; --teal-3:#50A0A0; --cyan:#00A6A6;
+  --on-accent:#FFFFFF; --on-chip:#FFFFFF; --accent-tint:rgba(0,128,128,.12);
+  --btn:#008080; --btn-hover:#006B6B; --on-btn:#FFFFFF;
+  --field:#FFFFFF; --field-text:var(--text); --field-ph:#5C777B;
+  --row:transparent; --row-tonal:var(--surface-2); --row-hover:rgba(0,128,128,.07); --row-tonal-hover:var(--teal-surface);
+  --row-text-2:var(--text-2); --row-ink:var(--accent-ink);
+  --current:rgba(0,128,128,.12); --today:rgba(0,128,128,.12); --track:#E1EDEE; --seg-on:#FFFFFF;
+  --cell:transparent; --cell-hover:rgba(0,128,128,.07); --gold:#C88A1E; --badge-back:transparent;
+  --material:rgba(245,250,252,.80); --material-border:rgba(23,56,63,.08);
+  --shadow:0 1px 2px rgba(23,56,63,.05),0 4px 16px rgba(23,56,63,.06);
+  --shadow-pop:0 12px 36px rgba(23,56,63,.18),0 2px 6px rgba(23,56,63,.08);
+  --hl:inset 0 1px 0 rgba(255,255,255,.6);
+  --b-teal:#008080; --b-teal-t:#005F5F;
+}
+
+/* ===== Midnight (system dark unless the person forced light, or forced dark) ===== */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){
+    color-scheme:dark;
+    --bg:#091925; --surface:#132C3B; --surface-2:#1A3946; --elevated:#214957; --deep:var(--surface);
+    --teal-surface:#17434A; --teal-surface-2:#24616A; --blue-surface:rgba(143,184,214,.14);
+    --border:#31515C; --border-strong:#456F7D; --hair:rgba(168,197,201,.14); --hover:rgba(131,226,218,.09);
+    --control:#5E8896;
+    --text:#F0FAFA; --text-2:#A8C5C9; --text-3:#93B3B8;
+    --brand:#45BDB8; --accent:#45BDB8; --accent-hover:#83E2DA; --accent-ink:#65D9D0;
+    --teal-2:#65D9D0; --teal-3:#83E2DA; --cyan:#43D5C9;
+    --on-accent:#06222B; --on-chip:#06222B; --accent-tint:rgba(69,189,184,.16);
+    --btn:#45BDB8; --btn-hover:#65D9D0; --on-btn:#06222B;
+    --field:#0D2230; --field-text:var(--text); --field-ph:#7FA1A6;
+    --row:transparent; --row-tonal:var(--surface-2); --row-hover:rgba(131,226,218,.08); --row-tonal-hover:var(--elevated);
+    --row-text-2:var(--text-2); --row-ink:var(--accent-ink);
+    --current:rgba(69,189,184,.16); --today:rgba(69,189,184,.18); --track:rgba(5,15,22,.55); --seg-on:#214957;
+    --cell:rgba(9,25,37,.35); --cell-hover:rgba(131,226,218,.08); --gold:#F2C879; --badge-back:transparent;
+    --material:rgba(9,25,37,.82); --material-border:rgba(131,226,218,.12);
+    --shadow:0 1px 2px rgba(0,0,0,.25),0 6px 20px rgba(0,0,0,.22);
+    --shadow-pop:0 16px 48px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
+    --hl:inset 0 1px 0 rgba(255,255,255,.04);
+    --b-teal:#45BDB8; --b-teal-t:#83E2DA;
+  }
+}
+:root[data-theme=dark]{
+  color-scheme:dark;
+  --bg:#091925; --surface:#132C3B; --surface-2:#1A3946; --elevated:#214957; --deep:var(--surface);
+  --teal-surface:#17434A; --teal-surface-2:#24616A; --blue-surface:rgba(143,184,214,.14);
+  --border:#31515C; --border-strong:#456F7D; --hair:rgba(168,197,201,.14); --hover:rgba(131,226,218,.09);
+  --control:#5E8896;
+  --text:#F0FAFA; --text-2:#A8C5C9; --text-3:#93B3B8;
+  --brand:#45BDB8; --accent:#45BDB8; --accent-hover:#83E2DA; --accent-ink:#65D9D0;
+  --teal-2:#65D9D0; --teal-3:#83E2DA; --cyan:#43D5C9;
+  --on-accent:#06222B; --on-chip:#06222B; --accent-tint:rgba(69,189,184,.16);
+  --btn:#45BDB8; --btn-hover:#65D9D0; --on-btn:#06222B;
+  --field:#0D2230; --field-text:var(--text); --field-ph:#7FA1A6;
+  --row:transparent; --row-tonal:var(--surface-2); --row-hover:rgba(131,226,218,.08); --row-tonal-hover:var(--elevated);
+  --row-text-2:var(--text-2); --row-ink:var(--accent-ink);
+  --current:rgba(69,189,184,.16); --today:rgba(69,189,184,.18); --track:rgba(5,15,22,.55); --seg-on:#214957;
+  --cell:rgba(9,25,37,.35); --cell-hover:rgba(131,226,218,.08); --gold:#F2C879; --badge-back:transparent;
+  --material:rgba(9,25,37,.82); --material-border:rgba(131,226,218,.12);
+  --shadow:0 1px 2px rgba(0,0,0,.25),0 6px 20px rgba(0,0,0,.22);
+  --shadow-pop:0 16px 48px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
+  --hl:inset 0 1px 0 rgba(255,255,255,.04);
+  --b-teal:#45BDB8; --b-teal-t:#83E2DA;
+}
+
+/* ===== Refinements that follow from the new tokens ===== */
+/* Selection and scrollbar pick up the new accent */
+::selection{background:var(--teal-surface-2);color:var(--text)}
+/* Quarter (year) headers sit on the page background, so give them the surface fill and a hairline */
+.quarter-section h3{background:var(--surface);border:1px solid var(--border);color:var(--accent-ink)}
+.quarter-section h3:hover{background:var(--surface-2)}
+/* Course rows: hairline-only, like other lists */
+.course-item{border-color:var(--hair);background:var(--row-tonal)}
+.course-item:hover{border-color:var(--border-strong)}
+/* Search: clear idle / focused / populated states */
+.search input{border-color:var(--border)}
+.search input:not(:placeholder-shown){border-color:var(--control)}
+/* Inputs: error + disabled states (user-invalid only fires after the person has interacted) */
+input:user-invalid,select:user-invalid,textarea:user-invalid{border-color:var(--err);box-shadow:0 0 0 3px color-mix(in srgb,var(--err) 22%,transparent)}
+input:disabled,select:disabled,textarea:disabled{opacity:.55;cursor:not-allowed;background:var(--surface-2)}
+/* Calendar chips: white text only where the chip colour is dark enough; dark mode chips use dark ink via --on-chip */
+.calendar-chip.medium{background:var(--warn-ink)}
+/* Primary button never relies on hue alone: keep a visible focus ring colour distinct from the fill */
+button:focus-visible{outline-color:var(--accent-ink)}
+/* Quieter floating surfaces */
+.dock,.inspector,.toast{border-color:var(--material-border)}
