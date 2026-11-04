@@ -112,7 +112,7 @@
   });
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !panel.hidden && e.target.id !== 'psi-search') close();
+    if (e.key === 'Escape' && !panel.hidden && e.target.id !== 'psi-search' && !$('dialog[open]')) close();
   });
   const calView = $('#view-calendar');
   if (calView) new MutationObserver(() => { if (!calendarActive() && !panel.hidden) close(); }).observe(calView, { attributes: true, attributeFilter: ['class'] });
