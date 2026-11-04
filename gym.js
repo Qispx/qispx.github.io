@@ -175,7 +175,7 @@ function renderWeek() {
       <div class="stepper"><button type="button" class="step" data-g="goal" data-d="-1" aria-label="Lower weekly goal">&minus;</button><input type="number" value="${goal}" min="1" max="7" data-g-input="goal" aria-label="Workouts per week"><button type="button" class="step" data-g="goal" data-d="1" aria-label="Raise weekly goal">+</button></div></div>
     <div class="col-track"><div class="col-fill" style="width:${pct}%"></div></div>
     <p class="gym-sub">Last 8 weeks</p>
-    <svg class="gym-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Workouts per week, last 8 weeks"><line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="rgba(255,255,255,.35)" stroke-dasharray="4 4"/>${bars}</svg>`;
+    <svg class="gym-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Workouts per week, last 8 weeks"><line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="var(--border-strong)" stroke-dasharray="4 4"/>${bars}</svg>`;
 }
 
 /* ---------- Calendar ---------- */
@@ -208,10 +208,10 @@ function weightChart(W) {
   const t0 = new Date(W[0].date + 'T00:00:00').getTime(), t1 = new Date(W[W.length - 1].date + 'T00:00:00').getTime();
   const X = d => p.l + ((new Date(d + 'T00:00:00').getTime() - t0) / ((t1 - t0) || 1)) * (w - p.l - p.r);
   const Y = v => p.t + (1 - (v - lo) / (hi - lo)) * (h - p.t - p.b);
-  const grid = [0, 1, 2, 3].map(i => { const v = lo + (hi - lo) * i / 3, y = Y(v); return `<line x1="${p.l}" x2="${w - p.r}" y1="${y}" y2="${y}" stroke="rgba(255,255,255,.1)"/><text x="${p.l - 8}" y="${y + 4}" text-anchor="end">${v.toFixed(0)}</text>`; }).join('');
+  const grid = [0, 1, 2, 3].map(i => { const v = lo + (hi - lo) * i / 3, y = Y(v); return `<line x1="${p.l}" x2="${w - p.r}" y1="${y}" y2="${y}" stroke="var(--border)"/><text x="${p.l - 8}" y="${y + 4}" text-anchor="end">${v.toFixed(0)}</text>`; }).join('');
   const pts = W.map(x => `${X(x.date).toFixed(1)},${Y(x.v).toFixed(1)}`).join(' ');
   const area = `${X(W[0].date)},${h - p.b} ${pts} ${X(W[W.length - 1].date)},${h - p.b}`;
-  const goal = G.goal.weight ? `<line x1="${p.l}" x2="${w - p.r}" y1="${Y(G.goal.weight)}" y2="${Y(G.goal.weight)}" stroke="#ffcf86" stroke-dasharray="5 5"/><text x="${w - p.r}" y="${Y(G.goal.weight) - 5}" text-anchor="end" style="fill:#ffcf86">goal ${G.goal.weight}</text>` : '';
+  const goal = G.goal.weight ? `<line x1="${p.l}" x2="${w - p.r}" y1="${Y(G.goal.weight)}" y2="${Y(G.goal.weight)}" stroke="var(--warn)" stroke-dasharray="5 5"/><text x="${w - p.r}" y="${Y(G.goal.weight) - 5}" text-anchor="end" style="fill:var(--warn)">goal ${G.goal.weight}</text>` : '';
   const dots = W.map(x => `<circle cx="${X(x.date)}" cy="${Y(x.v)}" r="4.5" style="fill:var(--accent)"><title>${shortDate(x.date)}: ${x.v} ${G.unit}</title></circle>`).join('');
   return `<svg class="gym-chart" viewBox="0 0 ${w} ${h}" role="img" aria-label="Body weight over time">${grid}${goal}<polygon points="${area}" style="fill:var(--accent);opacity:.12"/><polyline points="${pts}" fill="none" style="stroke:var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>${dots}
     <text x="${p.l}" y="${h - 6}">${shortDate(W[0].date)}</text><text x="${w - p.r}" y="${h - 6}" text-anchor="end">${shortDate(W[W.length - 1].date)}</text></svg>`;
@@ -227,7 +227,7 @@ function renderWeight() {
     const pct = span === 0
       ? (last.v === gw ? 100 : 0)
       : Math.max(0, Math.min(100, Math.round((last.v - first.v) / span * 100)));
-    prog = `<div class="col-track"><div class="col-fill" style="width:${pct}%"></div></div><div class="pct" style="color:#fff;font-weight:800;margin:8px 0 var(--space-4)">${pct}% of the way from ${first.v} to ${gw} ${u}</div>`;
+    prog = `<div class="col-track"><div class="col-fill" style="width:${pct}%"></div></div><div class="pct" style="font-weight:800;margin:8px 0 var(--space-4)">${pct}% of the way from ${first.v} to ${gw} ${u}</div>`;
   } else prog = '<p class="gym-sub" style="margin:0 0 var(--space-4)">Set a goal weight to see a progress bar.</p>';
   const fmt = n => (n > 0 ? '+' : '') + n.toFixed(1);
   el.innerHTML = `<div class="panel-heading"><div class="panel-heading-main"><h2>Weight Tracking</h2></div></div>
