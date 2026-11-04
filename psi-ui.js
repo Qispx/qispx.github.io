@@ -70,9 +70,10 @@
     });
     if (!status) return;
     if (!searching) status.textContent = '';
-    else if (!total) status.textContent = `No matches for “${query.trim()}” in this view. Try another view from the dock, or a different word.`;
-    else status.textContent = `${total} match${total === 1 ? '' : 'es'} here: ` +
-      Object.entries(counts).map(([g, n]) => `${n} in ${g}`).join(', ');
+    else if (!total) status.textContent = `No matches for “${query.trim()}” in this view`;
+    else status.textContent = `${total} match${total === 1 ? '' : 'es'} · ` +
+      Object.entries(counts).map(([g, n]) => `${n} ${g}`).join(', ');
+    status.title = status.textContent;
   }
 
   if (input) {
