@@ -3,33 +3,30 @@
    Every class the JS files generate is preserved; only the visual language changed.
    Inter is loaded with <link> in index.html (preconnect + stylesheet), not @import. */
 
-/* ===== 1. Tokens — Dark Teal × Aqua Mint =====
-   One dark theme. Depth comes from progressively lighter teal:
-   --bg #002222 → --side #003333 → --surface #004242 (panels) → --card #008080 (components) → --card-hover #00A3A3
-   Aqua mint (--accent) is the only accent: headings, active navigation, primary buttons, focus.
-   Coral / gold / orange / green appear only as status colours (priority, warnings, progress, success).
-   *-ink = text-safe shade on tinted surfaces (identical to the status colour here, since the theme is dark). */
+/* ===== 1. Tokens =====
+   teal  = identity: primary actions, active navigation, selection, progress
+   navy  = depth and structure; also the muted "info" colour (no electric blue)
+   cyan  = small decorative accents only; never the sole carrier of meaning
+   *-ink = text-safe shade for use ON the matching tinted surface
+   --control = edge for inputs/buttons (>=3:1); --border / --border-strong are dividers */
 :root{
-  color-scheme:dark;
-  --bg:#002222; --side:#003333; --surface:#004242; --surface-2:#003A3A; --elevated:#005050; --field:#003333;
-  --card:#008080; --card-hover:#00A3A3; --hover:rgba(0,163,163,.28);
-  --teal-surface:rgba(94,236,215,.14); --teal-surface-2:rgba(94,236,215,.26); --blue-surface:rgba(167,216,209,.14);
-  --border:rgba(94,236,215,.14); --border-strong:rgba(94,236,215,.30); --control:rgba(94,236,215,.52);
-  --text:#FFFFFF; --text-2:#A7D8D1;
-  --brand:#5EECD7; --accent:#5EECD7; --accent-hover:#8AF5E6; --accent-ink:#5EECD7;
-  --teal-2:#008080; --teal-3:#00A3A3; --cyan:#5EECD7;
-  --info:#A7D8D1; --info-ink:#A7D8D1; --blue:var(--accent-ink); --blue-ink:var(--accent-ink); --info-bg:var(--blue-surface);
-  --on-accent:#002222; --on-chip:#002222; --accent-tint:var(--teal-surface);
-  --teal-hover:var(--accent-hover); --teal-light:var(--card-hover);
-  --ok:#9BE9B3;     --ok-bg:rgba(155,233,179,.12);
-  --warn:#FFE29A;   --warn-bg:rgba(255,226,154,.12);
-  --orange:#FFB47A; --orange-bg:rgba(255,180,122,.12);
-  --high:#FFB0B0;   --high-bg:rgba(255,176,176,.12);
-  --err:#FF8D8D;    --err-bg:rgba(255,141,141,.12);
-  --progress:#FFCF86;
-  --ok-ink:var(--ok); --warn-ink:var(--warn); --orange-ink:var(--orange); --err-ink:var(--err);
-  --shadow:0 4px 18px rgba(0,17,17,.35);
-  --shadow-pop:0 14px 36px rgba(0,12,12,.55);
+  color-scheme:light;
+  --bg:#F5FAFC; --surface:#FFFFFF; --surface-2:#EDF5F6; --elevated:#FFFFFF;
+  --teal-surface:#DDF2EF; --teal-surface-2:#B9DEDA; --blue-surface:#E3EDF3;
+  --border:#D3E5E5; --border-strong:#A7C6C8; --control:#6B8E96;
+  --text:#17383F; --text-2:#58767A;
+  --brand:#008080; --accent:#008080; --accent-hover:#006B6B; --accent-ink:#006666;
+  --teal-2:#348F91; --teal-3:#50A0A0; --cyan:#00A6A6;
+  --info:#3E6A8A; --info-ink:#2F5875; --blue:var(--accent-ink); --blue-ink:var(--accent-ink); --info-bg:var(--blue-surface);
+  --on-accent:#FFFFFF; --on-chip:#FFFFFF; --accent-tint:var(--teal-surface);
+  --teal-hover:var(--accent-hover); --teal-light:var(--teal-2);
+  --ok:#16845B;     --ok-bg:rgba(22,132,91,.10);
+  --warn:#A96812;   --warn-bg:rgba(169,104,18,.11);
+  --orange:#B4530E; --orange-bg:rgba(180,83,14,.10);
+  --err:#C43D4D;    --err-bg:rgba(196,61,77,.09);
+  --ok-ink:#0F6B48; --warn-ink:#7F4C07; --orange-ink:#96400A; --err-ink:#A82D3D;
+  --shadow:0 1px 2px rgba(23,56,63,.05);
+  --shadow-pop:0 8px 28px rgba(23,56,63,.14);
   /* radius scale: control 12 · card 18 · panel 22 · modal 26 · pill */
   --r-sm:12px; --r:18px; --r-lg:22px; --r-modal:26px; --r-pill:999px;
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
@@ -38,6 +35,23 @@
   --font:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   --t:.15s ease;
   --sidebar:264px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){
+    color-scheme:dark;
+    --bg:#091925; --surface:#132C3B; --surface-2:#1A3946; --elevated:#214957;
+    --teal-surface:#17434A; --teal-surface-2:#24616A; --blue-surface:#1B3A4E;
+    --border:#31515C; --border-strong:#47707C; --control:#6A929C;
+    --text:#F0FAFA; --text-2:#A8C5C9;
+    --brand:#45BDB8; --accent:#45BDB8; --accent-hover:#65D9D0; --accent-ink:#83E2DA;
+    --teal-2:#65D9D0; --teal-3:#83E2DA; --cyan:#43D5C9;
+    --info:#8FB8D6; --info-ink:#8FB8D6;
+    --on-accent:#091925; --on-chip:#091925;
+    --ok:#52D6A0; --ok-bg:rgba(82,214,160,.10); --warn:#F4BD62; --warn-bg:rgba(244,189,98,.10);
+    --orange:#FFA05E; --orange-bg:rgba(255,160,94,.10); --err:#FF7885; --err-bg:rgba(255,120,133,.10);
+    --ok-ink:var(--ok); --warn-ink:var(--warn); --orange-ink:var(--orange); --err-ink:var(--err);
+    --shadow:none; --shadow-pop:0 10px 32px rgba(0,0,0,.45);
+  }
 }
 
 /* ===== 2. Base ===== */
@@ -601,83 +615,3 @@ body.nav-collapsed .sidebar>:not(.sidebar-head){display:none!important}
 .refresh-btn:hover{background:var(--surface-2);border-color:transparent;color:var(--text)}
 .is-loading::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-1px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* ===== 11. Dark Teal theme refinements (applied last on purpose) ===== */
-body,.sidebar,.content{color:var(--text)}
-.sidebar{background:var(--side)}
-.sidebar h2{color:var(--text)}
-.content h2{color:var(--accent)}
-.dashboard-hero h1{color:var(--text)}
-.dialog-title,.psi-dialog h2,.inspector h2{color:var(--text)}
-.sidebar input{background:var(--bg)}
-input,select,textarea{background:var(--field)}
-input:hover,select:hover,textarea:hover{border-color:var(--card-hover)}
-.stepper input{background:transparent}
-/* Components: teal fill, bright-teal hover (dark text on hover for contrast) */
-.secondary-button{background:var(--card);border-color:transparent;color:#fff}
-.secondary-button:hover{background:var(--card-hover);border-color:transparent;color:var(--bg)}
-.mv{background:transparent;border-color:transparent;color:var(--text-2)}
-.mv:hover{background:var(--hover);color:var(--text)}
-.sidebar a:hover,.dropdown-header:hover,.quarter-section h3:hover,.dock button:hover,.sidebar-collapse:hover,.refresh-btn:hover,.edit-btn:hover{background:var(--hover);color:var(--text)}
-.edit-btn{color:var(--accent-ink)}
-.edit-btn:hover{color:var(--accent-ink)}
-.danger-button:hover,.delete-btn:hover{background:var(--err-bg);color:var(--err-ink)}
-.mode-button.active,.col-tabs button.active,.cal-mode.active,.side-seg button.on,.side-days button.on{background:var(--card);color:#fff;box-shadow:none}
-.mode-button:hover,.col-tabs button:hover,.cal-mode:hover,.side-seg button:hover,.side-days button:hover{background:var(--hover);color:var(--text)}
-.mode-button.active:hover,.col-tabs button.active:hover,.cal-mode.active:hover,.side-seg button.on:hover,.side-days button.on:hover{background:var(--card-hover);color:var(--bg)}
-/* Rows and cells sit inset in panels */
-.schedule-item,.homework-item,.priority-item,.task-item,.saved-class,.dl-row,.gym-wrow,.gym-chk,.pv-row{border-color:var(--border)}
-.schedule-item:hover,.homework-item:hover,.priority-item:hover,.task-item:hover,.gym-chk:hover{background:var(--hover)}
-.schedule-item.current-class{background:var(--teal-surface);border-color:var(--accent)}
-.calendar-cell,.gym-cell,.pv-col{background:var(--surface-2)}
-.calendar-cell.is-today{background:var(--teal-surface)}
-.calendar-cell.outside,.gym-cell.blank{background:transparent}
-.gym-chk.on{background:var(--teal-surface)}
-.gym-day{background:var(--surface-2)}
-/* Stat tiles */
-.ov-stat,.priority-stat,.side-figures .fig{background:var(--card)}
-.ov-stat b,.priority-stat-value,.side-figures b,.ov-stat span,.priority-stat-label,.side-figures .fig span{color:#fff}
-.ov-stat.warn,.ov-stat.bad,.priority-stat.streak{background:var(--surface-2)}
-.ov-stat.warn b,.priority-stat.streak .priority-stat-value{color:var(--progress)}
-.ov-stat.bad b{color:var(--err)}
-.ov-stat.warn span,.ov-stat.bad span,.priority-stat.streak .priority-stat-label{color:var(--text-2)}
-/* Progress = warm gold; completion = green */
-.col-fill,.workload-bar-fill,.side-bar i,.gauge-fill{background:var(--progress)}
-.workload-bar-fill.is-complete{background:var(--ok)}
-.workload-bar-track,.col-track,.side-bar,.gauge-track{background:var(--teal-surface)}
-.gym-chart line[stroke="#ffcf86"]{stroke:var(--progress)}
-.gym-chart text[style*="ffcf86"]{fill:var(--progress)!important}
-/* High priority = light coral (distinct from very high = soft coral red; orange stays for secondary urgency) */
-.calendar-chip.high,.calendar-dot.high{background:var(--high)}
-.homework-badge.high{background:var(--high-bg);color:var(--high)}
-.calendar-chip.medium{background:var(--warn)}
-.calendar-chip.done{background:var(--surface-2);color:var(--text-2)}
-.priority-insight{box-shadow:inset 3px 0 0 currentColor}
-/* Dialog, toast, inspector */
-.psi-dialog{background:var(--surface);border-color:var(--border-strong)}
-.psi-dialog::backdrop{background:rgba(0,17,17,.65)}
-.dlg-danger:hover{background:var(--err);filter:brightness(1.1)}
-.toast{background:var(--elevated);border-color:var(--border-strong)}
-.inspector{background:var(--surface);border-color:var(--border-strong)}
-.dock{background:rgba(0,51,51,.85);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-color:var(--border-strong)}
-.side-toggle,.side-btn{background:var(--card);border-color:transparent;color:#fff}
-.side-toggle:hover,.side-btn:hover{background:var(--card-hover);border-color:transparent;color:var(--bg)}
-.gym-pill{background:var(--surface-2);border-color:var(--border-strong)}
-.gym-pill:hover{background:var(--hover);color:var(--text);border-color:var(--border-strong)}
-.step{background:var(--surface-2)}
-.day-check span{background:var(--field)}
-
-/* ===== 12. Search: transparent, Apple-style floating field (no container behind it) ===== */
-.search-wrap{background:transparent;border-bottom:0;padding:var(--s2) var(--s6);pointer-events:none}
-body.searching .search-wrap{border-bottom-color:transparent}
-.search,.search-status{pointer-events:auto}
-.search input{border:1px solid var(--border);background:rgba(0,51,51,.55);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);box-shadow:0 2px 12px rgba(0,12,12,.25)}
-.search input:hover{border-color:var(--border-strong)}
-.search input:focus-visible{background:rgba(0,51,51,.82);border-color:var(--accent);outline:2px solid var(--accent);outline-offset:1px}
-.search-clear{background:var(--teal-surface-2);color:var(--text)}
-.search-clear:hover{background:var(--card-hover);color:var(--bg)}
-.search-hint{border-color:var(--border-strong);color:var(--text-2)}
-.search-status{flex:0 1 auto;padding:4px 12px;border:1px solid var(--border);border-radius:var(--r-pill);background:rgba(0,51,51,.55);-webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);color:var(--text-2)}
-.search-status:empty{display:none}
-@media (max-width:900px){.search-wrap{padding:var(--s2) var(--s4)}}
-@media (max-width:700px){.search-status{flex:0 1 auto;align-self:flex-start;white-space:normal}}
