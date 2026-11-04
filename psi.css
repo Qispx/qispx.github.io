@@ -1,4 +1,3 @@
-
 /* PSI — single stylesheet (deep-teal identity × Apple-style materials)
    Order: tokens > base > layout > components > features > responsive > motion
    Every class the JS files generate is preserved; only the visual language changed.
@@ -13,15 +12,15 @@
    --material = translucent fill for floating surfaces (sidebar, dock, inspector, toasts) */
 :root{
   color-scheme:light;
-  --bg:#EAF5F4; --surface:#F6FBFA; --surface-2:#E1F0EE; --elevated:#FFFFFF;
+  --bg:#E0EFEE; --surface:#FFFFFF; --surface-2:#D3E8E6; --elevated:#FFFFFF;
   --teal-surface:#D0EBE7; --teal-surface-2:#A9D8D2; --blue-surface:#DCE9F2;
-  --border:rgba(0,66,66,.12); --border-strong:rgba(0,66,66,.24); --hair:rgba(0,66,66,.09); --hover:rgba(0,100,100,.07);
-  --control:#5F8A8A;
-  --text:#052E2E; --text-2:#3A6060; --text-3:#527676;
-  --brand:#008080; --accent:#008080; --accent-hover:#006464; --accent-ink:#006464;
+  --border:rgba(0,50,50,.18); --border-strong:rgba(0,50,50,.34); --hair:rgba(0,50,50,.14); --hover:rgba(0,90,90,.10);
+  --control:#3F7474;
+  --text:#021C1C; --text-2:#2A5050; --text-3:#436A6A;
+  --brand:#007777; --accent:#007777; --accent-hover:#005555; --accent-ink:#005555;
   --teal-2:#2E8F8F; --teal-3:#4FA6A6; --cyan:#00A3A3;
   --info:#3E6A8A; --info-ink:#2F5875; --blue:var(--accent-ink); --blue-ink:var(--accent-ink); --info-bg:var(--blue-surface);
-  --on-accent:#FFFFFF; --on-chip:#FFFFFF; --accent-tint:rgba(0,128,128,.13);
+  --on-accent:#FFFFFF; --on-chip:#FFFFFF; --accent-tint:rgba(0,119,119,.14);
   --teal-hover:var(--accent-hover); --teal-light:var(--teal-2);
   --ok:#16845B;     --ok-bg:rgba(22,132,91,.13);
   --warn:#A96812;   --warn-bg:rgba(169,104,18,.14);
@@ -30,15 +29,15 @@
   --ok-ink:#0F6B48; --warn-ink:#7F4C07; --orange-ink:#96400A; --err-ink:#A82D3D;
   --material:rgba(246,251,250,.72); --material-border:rgba(0,66,66,.10);
   --deep:var(--surface);
-  --btn:#008080; --btn-hover:#006464; --on-btn:#FFFFFF;
+  --btn:#006E6E; --btn-hover:#005252; --on-btn:#FFFFFF;
   --field:var(--surface); --field-text:var(--text); --field-ph:var(--text-3);
   --row:transparent; --row-tonal:var(--surface-2); --row-hover:var(--hover); --row-tonal-hover:var(--surface-2);
   --row-text-2:var(--text-2); --row-ink:var(--accent-ink);
   --current:var(--accent-tint); --today:var(--accent-tint); --track:var(--surface-2); --seg-on:var(--surface);
   --cell:transparent; --cell-hover:var(--hover); --gold:#C88A1E; --badge-back:transparent;
   --blur:saturate(1.6) blur(22px);
-  --shadow:0 1px 2px rgba(0,50,50,.05),0 6px 20px rgba(0,50,50,.05);
-  --shadow-pop:0 12px 40px rgba(0,50,50,.18),0 2px 6px rgba(0,50,50,.08);
+  --shadow:0 1px 2px rgba(0,40,40,.08),0 8px 24px rgba(0,40,40,.08);
+  --shadow-pop:0 14px 44px rgba(0,40,40,.26),0 2px 6px rgba(0,40,40,.12);
   /* radius scale: control 14 · card 20 · panel 24 · modal 28 · pill */
   --r-sm:14px; --r:20px; --r-lg:24px; --r-modal:28px; --r-pill:999px;
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
@@ -52,53 +51,53 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme=light]){
     color-scheme:dark;
-    --bg:#004242; --surface:#003333; --surface-2:#004242; --elevated:#004242;
-    --deep:#002222;
+    --bg:#003535; --surface:#002828; --surface-2:#003A3A; --elevated:#003A3A;
+    --deep:#001414;
     --teal-surface:#006464; --teal-surface-2:#008080; --blue-surface:rgba(143,184,214,.16);
-    --border:rgba(94,236,215,.18); --border-strong:rgba(94,236,215,.32); --hair:rgba(94,236,215,.10); --hover:rgba(94,236,215,.08);
-    --control:#00A3A3;
-    --text:#FFFFFF; --text-2:#A7D8D1; --text-3:#80BDB4;
-    --brand:#00A3A3; --accent:#00A3A3; --accent-hover:#5EECD7; --accent-ink:#5EECD7;
-    --teal-2:#00A3A3; --teal-3:#5EECD7; --cyan:#5EECD7;
+    --border:rgba(125,255,232,.22); --border-strong:rgba(125,255,232,.40); --hair:rgba(125,255,232,.14); --hover:rgba(125,255,232,.12);
+    --control:#2BC9C0;
+    --text:#FFFFFF; --text-2:#CDF3ED; --text-3:#9ED8CF;
+    --brand:#00B3B0; --accent:#00A3A3; --accent-hover:#7DFFE8; --accent-ink:#7DFFE8;
+    --teal-2:#00A3A3; --teal-3:#7DFFE8; --cyan:#7DFFE8;
     --info:#8FB8D6; --info-ink:#8FB8D6;
-    --on-accent:#002222; --on-chip:#002222; --accent-tint:rgba(94,236,215,.12);
-    --btn:#008080; --btn-hover:#00A3A3; --on-btn:#FFFFFF;
-    --field:#006464; --field-text:#5EECD7; --field-ph:#A7D8D1;
-    --row:#008080; --row-tonal:#008080; --row-hover:#00A3A3; --row-tonal-hover:#00A3A3;
-    --row-text-2:#DDF7F3; --row-ink:#F0FFFC;
-    --current:#006464; --today:rgba(0,163,163,.5); --track:rgba(0,20,20,.55); --seg-on:rgba(94,236,215,.16);
-    --cell:rgba(0,128,128,.28); --cell-hover:rgba(0,128,128,.4); --gold:#FFCF86; --badge-back:rgba(0,20,20,.55);
+    --on-accent:#001414; --on-chip:#001414; --accent-tint:rgba(125,255,232,.16);
+    --btn:#00797A; --btn-hover:#009292; --on-btn:#FFFFFF;
+    --field:#001A1A; --field-text:#A8FFF0; --field-ph:#8CC9C0;
+    --row:#00797A; --row-tonal:#00797A; --row-hover:#008F8F; --row-tonal-hover:#008F8F;
+    --row-text-2:#E6FFFB; --row-ink:#FFFFFF;
+    --current:#005252; --today:rgba(0,179,176,.55); --track:rgba(0,10,10,.7); --seg-on:rgba(125,255,232,.22);
+    --cell:rgba(0,10,10,.35); --cell-hover:rgba(0,121,122,.5); --gold:#FFCF86; --badge-back:rgba(0,10,10,.7);
     --ok:#52D6A0; --ok-bg:rgba(82,214,160,.14); --warn:#F4BD62; --warn-bg:rgba(244,189,98,.14);
     --orange:#FFA05E; --orange-bg:rgba(255,160,94,.14); --err:#FF7885; --err-bg:rgba(255,120,133,.14);
     --ok-ink:var(--ok); --warn-ink:var(--warn); --orange-ink:var(--orange); --err-ink:var(--err);
-    --material:rgba(0,34,34,.86); --material-border:rgba(94,236,215,.16);
-    --shadow:0 1px 0 rgba(94,236,215,.04) inset; --shadow-pop:0 16px 48px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
+    --material:rgba(0,16,16,.88); --material-border:rgba(94,236,215,.16);
+    --shadow:0 2px 4px rgba(0,0,0,.30),0 10px 28px rgba(0,0,0,.28); --shadow-pop:0 18px 56px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.4);
   }
 }
 /* Explicit dark theme (JS theme switch) */
 :root[data-theme=dark]{
   color-scheme:dark;
-  --bg:#004242; --surface:#003333; --surface-2:#004242; --elevated:#004242;
-  --deep:#002222;
+  --bg:#003535; --surface:#002828; --surface-2:#003A3A; --elevated:#003A3A;
+  --deep:#001414;
   --teal-surface:#006464; --teal-surface-2:#008080; --blue-surface:rgba(143,184,214,.16);
-  --border:rgba(94,236,215,.18); --border-strong:rgba(94,236,215,.32); --hair:rgba(94,236,215,.10); --hover:rgba(94,236,215,.08);
-  --control:#00A3A3;
-  --text:#FFFFFF; --text-2:#A7D8D1; --text-3:#80BDB4;
-  --brand:#00A3A3; --accent:#00A3A3; --accent-hover:#5EECD7; --accent-ink:#5EECD7;
-  --teal-2:#00A3A3; --teal-3:#5EECD7; --cyan:#5EECD7;
+  --border:rgba(125,255,232,.22); --border-strong:rgba(125,255,232,.40); --hair:rgba(125,255,232,.14); --hover:rgba(125,255,232,.12);
+  --control:#2BC9C0;
+  --text:#FFFFFF; --text-2:#CDF3ED; --text-3:#9ED8CF;
+  --brand:#00B3B0; --accent:#00A3A3; --accent-hover:#7DFFE8; --accent-ink:#7DFFE8;
+  --teal-2:#00A3A3; --teal-3:#7DFFE8; --cyan:#7DFFE8;
   --info:#8FB8D6; --info-ink:#8FB8D6;
-  --on-accent:#002222; --on-chip:#002222; --accent-tint:rgba(94,236,215,.12);
-  --btn:#008080; --btn-hover:#00A3A3; --on-btn:#FFFFFF;
-  --field:#006464; --field-text:#5EECD7; --field-ph:#A7D8D1;
-  --row:#008080; --row-tonal:#008080; --row-hover:#00A3A3; --row-tonal-hover:#00A3A3;
-  --row-text-2:#DDF7F3; --row-ink:#F0FFFC;
-  --current:#006464; --today:rgba(0,163,163,.5); --track:rgba(0,20,20,.55); --seg-on:rgba(94,236,215,.16);
-  --cell:rgba(0,128,128,.28); --cell-hover:rgba(0,128,128,.4); --gold:#FFCF86; --badge-back:rgba(0,20,20,.55);
+  --on-accent:#001414; --on-chip:#001414; --accent-tint:rgba(125,255,232,.16);
+  --btn:#00797A; --btn-hover:#009292; --on-btn:#FFFFFF;
+  --field:#001A1A; --field-text:#A8FFF0; --field-ph:#8CC9C0;
+  --row:#00797A; --row-tonal:#00797A; --row-hover:#008F8F; --row-tonal-hover:#008F8F;
+  --row-text-2:#E6FFFB; --row-ink:#FFFFFF;
+  --current:#005252; --today:rgba(0,179,176,.55); --track:rgba(0,10,10,.7); --seg-on:rgba(125,255,232,.22);
+  --cell:rgba(0,10,10,.35); --cell-hover:rgba(0,121,122,.5); --gold:#FFCF86; --badge-back:rgba(0,10,10,.7);
   --ok:#52D6A0; --ok-bg:rgba(82,214,160,.14); --warn:#F4BD62; --warn-bg:rgba(244,189,98,.14);
   --orange:#FFA05E; --orange-bg:rgba(255,160,94,.14); --err:#FF7885; --err-bg:rgba(255,120,133,.14);
   --ok-ink:var(--ok); --warn-ink:var(--warn); --orange-ink:var(--orange); --err-ink:var(--err);
-  --material:rgba(0,34,34,.86); --material-border:rgba(94,236,215,.16);
-  --shadow:0 1px 0 rgba(94,236,215,.04) inset; --shadow-pop:0 16px 48px rgba(0,0,0,.5),0 2px 8px rgba(0,0,0,.3);
+  --material:rgba(0,16,16,.88); --material-border:rgba(94,236,215,.16);
+  --shadow:0 2px 4px rgba(0,0,0,.30),0 10px 28px rgba(0,0,0,.28); --shadow-pop:0 18px 56px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.4);
 }
 
 /* ===== 2. Base ===== */
@@ -680,3 +679,58 @@ body.nav-collapsed .sidebar>:not(.sidebar-head){display:none!important}
 .refresh-btn:hover{background:var(--hover);border-color:transparent;color:var(--text)}
 .is-loading::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-1px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== 11. Rhythm & layout =====
+   One spacing system: --gap between containers (panels, grids, hero), --s5 inside panels between blocks,
+   10px between list rows. Last children never add trailing space. */
+:root{--gap:24px}
+.content{padding:var(--s6) var(--gutter) 140px}
+.view.active>:last-child{margin-bottom:0}
+.search-wrap{margin-bottom:var(--gap)}
+.dashboard-hero{margin-bottom:var(--gap);padding:0 0 var(--s2)}
+.dashboard-section,.quarter-section{margin-bottom:var(--s6)}
+.dashboard-section>:last-child,.quarter-section>:last-child{margin-bottom:0}
+.ui-panel,.section-card{margin-bottom:var(--gap)}
+.ui-panel:last-child,.section-card:last-child{margin-bottom:0}
+.dashboard-grid,.gym-grid{gap:var(--gap);margin-bottom:var(--gap)}
+.dashboard-grid:last-child,.gym-grid:last-child{margin-bottom:0}
+.ui-panel>:last-child,.section-card>:last-child{margin-bottom:0}
+.panel-heading,.section-header{align-items:center;margin-bottom:var(--s5)}
+.panel-heading h2,.panel-heading h3,.section-header h2,.section-header h3,.panel-heading-main>*{margin:0}
+.sub-h{margin:0 0 var(--s3)}
+.priority-list,.schedule-list,.schedule-saved,.task-list,.homework-list,.col-list,.gym-ex-list{gap:10px}
+.homework-list{margin-top:var(--s4)}
+.schedule-item,.homework-item,.priority-item,.task-item,.saved-class,.course-item,.dl-row,.gym-wrow{padding:14px 18px}
+.gym-chk{padding:14px 18px}
+.course-item{margin:0 0 10px}
+.course-list>li:last-child,.course-list>.course-item:last-child{margin-bottom:0}
+.dropdown-section{margin-top:var(--s5)}
+.dropdown-section:first-child{margin-top:0}
+.dropdown-header,.quarter-section h3{padding:12px 16px}
+.dropdown-body{margin-top:var(--s4)}
+.quarter-section h3{margin-bottom:var(--s4)}
+.priority-stats,.ov-stats{gap:var(--s5);margin-bottom:var(--s5)}
+.priority-insight{margin-bottom:var(--s5)}
+.priority-divider{margin:var(--s5) 0 var(--s4)}
+.priority-workload{padding-top:var(--s5)}
+.schedule-saved{margin-top:var(--s5);padding-top:var(--s5)}
+.schedule-actions{margin-top:var(--s5)}
+.task-form{margin-bottom:var(--s4)}
+.task-panel>.secondary-button{margin-top:var(--s4)}
+.homework-form,.gym-wform{margin-bottom:var(--s5)}
+.cal-toolbar,.calendar-legend{margin-bottom:var(--s5)}
+.col-card summary{padding:16px 20px}
+.col-body{padding:0 20px 20px}
+.col-list{gap:var(--s3)}
+.site-footer{margin-top:var(--s7)}
+.sidebar{padding:var(--s6) var(--s5)}
+.sidebar ul{margin-bottom:var(--s5)}
+.sidebar-nav-label{margin:var(--s5) 0 var(--s2) var(--s4)}
+.sidebar-nav-label:first-of-type{margin-top:0}
+.side-section{margin-top:var(--s5);padding-top:var(--s5)}
+@media (max-width:900px){:root{--gap:20px}}
+@media (max-width:700px){
+  :root{--gap:16px}
+  .dashboard-section,.quarter-section{margin-bottom:var(--s5)}
+  .schedule-item,.homework-item,.priority-item,.task-item,.saved-class,.course-item,.dl-row,.gym-wrow,.gym-chk{padding:12px 14px}
+}
