@@ -4,17 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Palumbo Student Interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="psi.css">
     <link rel="icon" type="image/png" href="icon.png">
 
 </head>
 <body>
 
-    <aside class="sidebar">
-        <h2>Palumbo Student Interface</h2>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-head">
+            <h2><span class="brand-full">Palumbo Student Interface</span><span class="brand-short" aria-hidden="true">PSI</span></h2>
+            <button type="button" class="sidebar-collapse" id="sidebar-collapse" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+            </button>
+        </div>
 
         <p class="sidebar-nav-label">Jump to</p>
-        
+
 <ul>
     <li><a href="#priority">Weekly Priorities</a></li>
     <li><a href="#schedule">Daily Schedule</a></li>
@@ -27,33 +35,41 @@
     <li><a href="#q4" class="sub-link">Senior Year</a></li>
 </ul>
 
+<div class="sidebar-gpa" id="sidebar-gpa">
+    <div class="gpa-values" id="gpa-values">
+        <h3>Unweighted GPA: <span id="unweighted-gpa">0.00</span></h3>
+        <h3>Weighted GPA: <span id="weighted-gpa">0.00</span></h3>
+    </div>
+    <button type="button" class="secondary-button gpa-toggle" id="gpa-toggle-btn" onclick="toggleGpaVisibility()">Hide Stats</button>
 
+    <h3 class="sat-composite-heading">SAT Composite: <span id="sat-composite">0</span></h3>
+</div>
 
-        <div class="sidebar-gpa" id="sidebar-gpa">
-            <div class="gpa-values" id="gpa-values">
-                <h3>Unweighted GPA: <span id="unweighted-gpa">0.00</span></h3>
-                <h3>Weighted GPA: <span id="weighted-gpa">0.00</span></h3>
-            </div>
-            <button type="button" class="secondary-button gpa-toggle" id="gpa-toggle-btn" onclick="toggleGpaVisibility()">Hide Stats</button>
-
-            <h3 class="sat-composite-heading">SAT Composite: <span id="sat-composite">0</span></h3>
-        </div>
-
-        <div class="sidebar-sat">
-            <p class="sidebar-nav-label">SAT Score</p>
-            <div class="sat-inputs">
-                <label>Math
-                    <input type="number" id="sat-math" min="200" max="800" step="10" placeholder="0">
-                </label>
-                <label>Reading
-                    <input type="number" id="sat-reading" min="200" max="800" step="10" placeholder="0">
-                </label>
-            </div>
-        </div>
+<div class="sidebar-sat">
+    <p class="sidebar-nav-label">SAT Score</p>
+    <div class="sat-inputs">
+        <label>Math
+            <input type="number" id="sat-math" min="200" max="800" step="10" placeholder="0">
+        </label>
+        <label>Reading
+            <input type="number" id="sat-reading" min="200" max="800" step="10" placeholder="0">
+        </label>
+    </div>
+</div>
 
     </aside>
 
     <main class="content">
+        <div class="search-wrap">
+            <div class="search" role="search">
+                <svg class="search-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input type="search" id="psi-search" placeholder="Search assignments, classes, tasks…" aria-label="Search PSI" autocomplete="off" spellcheck="false">
+                <button type="button" class="search-clear" id="psi-search-clear" aria-label="Clear search" hidden>&times;</button>
+                <kbd class="search-hint" aria-hidden="true">/</kbd>
+            </div>
+            <p class="search-status" id="psi-search-status" role="status" aria-live="polite"></p>
+        </div>
+
              <div class="dashboard-hero">
                 <div class="hero-top">
                     <div>
@@ -89,7 +105,7 @@
                         <span>This week</span>
                         <span id="priority-workload-count">0 / 0 done</span>
                     </div>
-                    <div class="workload-bar-track">
+                    <div class="workload-bar-track" id="priority-workload-track" role="progressbar" aria-label="Weekly assignments completed" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                         <div class="workload-bar-fill" id="priority-workload-bar"></div>
                         <div class="workload-bar-overdue" id="priority-workload-overdue"></div>
                     </div>
@@ -163,6 +179,7 @@
             placeholder=" " 
             maxlength="100" 
             autocomplete="off" 
+            aria-label="New task"
             required
         >
         <button type="submit">Add</button>
@@ -406,6 +423,7 @@
     <script src="script.js" defer></script>     
     <script src="v3.js" defer></script>
     <script src="gym.js" defer></script>
+    <script src="psi-ui.js" defer></script>
       <footer class="site-footer">
 
     <div class="footer-links">
