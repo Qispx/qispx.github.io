@@ -734,3 +734,110 @@ body.nav-collapsed .sidebar>:not(.sidebar-head){display:none!important}
   .dashboard-section,.quarter-section{margin-bottom:var(--s5)}
   .schedule-item,.homework-item,.priority-item,.task-item,.saved-class,.course-item,.dl-row,.gym-wrow,.gym-chk{padding:12px 14px}
 }
+
+/* ===== 12. Premium polish: unified radii, type, materials and badges =====
+   Badge system: every badge is a translucent tint of one semantic colour (--bc) over a dark/neutral backing,
+   with a hairline edge and a bright text shade (--bt). Red = urgent/overdue, orange = heavy, amber = medium,
+   blue = event, green = safe/done, teal = neutral/info. */
+:root{
+  --b-red:#C43D4D; --b-red-t:#9B2434;
+  --b-orange:#B4530E; --b-orange-t:#8A3C06;
+  --b-amber:#A96812; --b-amber-t:#744205;
+  --b-blue:#2F6FA8; --b-blue-t:#1F4F7E;
+  --b-green:#16845B; --b-green-t:#0C5E40;
+  --b-teal:#007777; --b-teal-t:#005555;
+  --b-amt:15%;
+  --hl:inset 0 1px 0 rgba(255,255,255,.75);
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --t:.2s var(--ease);
+  --r-cell:12px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){
+    --b-red:#FF6B7A; --b-red-t:#FFB8C0;
+    --b-orange:#FF9A4D; --b-orange-t:#FFCFA6;
+    --b-amber:#F2BE5C; --b-amber-t:#FFE3A6;
+    --b-blue:#6DB4FF; --b-blue-t:#BADCFF;
+    --b-green:#4FE0A0; --b-green-t:#B0F7D6;
+    --b-teal:#2FD8CB; --b-teal-t:#7DFFE8;
+    --b-amt:26%; --hl:inset 0 1px 0 rgba(255,255,255,.07);
+  }
+}
+:root[data-theme=dark]{
+  --b-red:#FF6B7A; --b-red-t:#FFB8C0;
+  --b-orange:#FF9A4D; --b-orange-t:#FFCFA6;
+  --b-amber:#F2BE5C; --b-amber-t:#FFE3A6;
+  --b-blue:#6DB4FF; --b-blue-t:#BADCFF;
+  --b-green:#4FE0A0; --b-green-t:#B0F7D6;
+  --b-teal:#2FD8CB; --b-teal-t:#7DFFE8;
+  --b-amt:26%; --hl:inset 0 1px 0 rgba(255,255,255,.07);
+}
+
+/* Badge colour assignment */
+.day-pill,.task-progress,.footer-version,.school-badge,.homework-badge,.priority-tag{--bc:var(--b-teal);--bt:var(--b-teal-t)}
+.overdue-pill,.homework-badge.overdue,.homework-badge.veryhigh,.homework-badge.high,.homework-badge.intense,.homework-badge.test,.priority-tag-test,.school-badge.reach{--bc:var(--b-red);--bt:var(--b-red-t)}
+.homework-badge.heavy{--bc:var(--b-orange);--bt:var(--b-orange-t)}
+.homework-badge.medium,.homework-badge.moderate,.school-badge.target{--bc:var(--b-amber);--bt:var(--b-amber-t)}
+.homework-badge.event,.priority-tag-event{--bc:var(--b-blue);--bt:var(--b-blue-t)}
+.school-badge.safety{--bc:var(--b-green);--bt:var(--b-green-t)}
+/* Badge shape: one recipe for all of them */
+.day-pill,.task-progress,.footer-version,.school-badge,.homework-badge,.priority-tag,
+.overdue-pill,.homework-badge.overdue,.homework-badge.veryhigh,.homework-badge.high,.homework-badge.intense,.homework-badge.test,.priority-tag-test,
+.homework-badge.heavy,.homework-badge.medium,.homework-badge.moderate,.homework-badge.event,.priority-tag-event,
+.school-badge.reach,.school-badge.target,.school-badge.safety{
+  display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:2px 11px;border-radius:var(--r-pill);
+  background-color:var(--badge-back);
+  background-image:linear-gradient(color-mix(in srgb,var(--bc) var(--b-amt),transparent),color-mix(in srgb,var(--bc) var(--b-amt),transparent));
+  color:var(--bt);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--bc) 42%,transparent);
+  font-size:var(--fs-xs);font-weight:600;letter-spacing:.01em;line-height:1.2;white-space:nowrap
+}
+.priority-tag,.priority-tag-test,.priority-tag-event{min-height:20px;padding:1px 8px;font-size:10.5px}
+
+/* Type: tighter tracking, consistent weights, one label style */
+body{letter-spacing:-.011em;font-feature-settings:"cv11","ss01"}
+h1,h2,h3,h4{font-weight:700;letter-spacing:-.022em}
+.dashboard-hero h1{letter-spacing:-.04em}
+.content h2{font-size:26px;letter-spacing:-.03em}
+.ui-panel h2,.section-card h2{font-size:var(--fs-lg);letter-spacing:-.02em}
+.ov-stat b,.priority-stat-value,.side-figures b,.gym-name{letter-spacing:-.03em}
+label{letter-spacing:0}
+.sidebar-nav-label,.schedule-header,.calendar-weekdays,.gym-cal-head,.priority-divider{color:var(--text-3);font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
+
+/* Radii: controls 12 · rows 14 · cells 12 · panels 24 · floating 26-28 */
+button,input,select,textarea{border-radius:12px}
+.ui-panel,.section-card{border-radius:24px;box-shadow:var(--hl),var(--shadow)}
+.schedule-item,.homework-item,.priority-item,.task-item,.saved-class,.course-item,.dl-row,.gym-wrow,.gym-chk,.pv-row,.dropdown-header,.quarter-section h3{border-radius:14px}
+.priority-item,.course-item,.gym-chk,.schedule-item,.homework-item,.task-item,.saved-class{box-shadow:var(--hl)}
+.calendar-cell,.gym-cell,.pv-col{border-radius:var(--r-cell)}
+.calendar-chip{border-radius:8px}
+.col-card{border-radius:20px;box-shadow:var(--hl)}
+.inspector{border-radius:26px}
+.psi-dialog{border-radius:28px}
+.toast{border-radius:16px}
+
+/* Focus: soft ring on fields, crisp outline on everything else */
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none;border-color:var(--accent-ink);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent-ink) 28%,transparent)}
+button:focus-visible,a:focus-visible,summary:focus-visible,.dropdown-header:focus-visible,.quarter-section h3:focus-visible{outline:2px solid var(--accent-ink);outline-offset:3px}
+.search input:focus-visible{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent-ink) 22%,transparent);outline:none}
+
+/* Materials: every floating surface shares one blur, edge and shadow */
+.sidebar,.dock,.inspector,.toast{-webkit-backdrop-filter:saturate(1.8) blur(28px);backdrop-filter:saturate(1.8) blur(28px)}
+.dock{padding:6px;box-shadow:var(--hl),var(--shadow-pop)}
+.dock button.active{background:var(--accent-tint);color:var(--accent-ink)}
+.inspector,.toast{box-shadow:var(--hl),var(--shadow-pop)}
+.psi-dialog::backdrop{-webkit-backdrop-filter:blur(12px) saturate(1.4);backdrop-filter:blur(12px) saturate(1.4)}
+
+/* Navigation: selected item is a filled, rounded row (no edge bar) */
+.sidebar a{border-radius:12px;font-weight:500}
+.sidebar a.active,.sidebar a[aria-current=true]{box-shadow:none;font-weight:600}
+
+/* Progress: one track height and cap style */
+.workload-bar-track,.gauge-track{height:8px}
+.col-track,.side-bar{height:6px}
+
+/* Scrollbars: slim, translucent, no track */
+.sidebar,.content{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--text) 30%,transparent) transparent}
+.sidebar::-webkit-scrollbar,.content::-webkit-scrollbar{width:12px}
+.sidebar::-webkit-scrollbar-track,.content::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb,.content::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text) 28%,transparent);border:4px solid transparent;border-radius:var(--r-pill);background-clip:padding-box}
+.sidebar::-webkit-scrollbar-thumb:hover,.content::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--text) 45%,transparent);background-clip:padding-box}
