@@ -1,18 +1,37 @@
+Claude
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Index · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#002222">
+    <meta name="color-scheme" content="dark">
     <title>Palumbo Student Interface</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="psi.css">
     <link rel="icon" type="image/png" href="icon.png">
-
+ 
 </head>
 <body>
-
+ 
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-head">
             <h2><span class="brand-full">Palumbo Student Interface</span><span class="brand-short" aria-hidden="true">PSI</span></h2>
@@ -20,9 +39,9 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
             </button>
         </div>
-
+ 
         <p class="sidebar-nav-label">Jump to</p>
-
+ 
 <ul>
     <li><a href="#priority">Weekly Priorities</a></li>
     <li><a href="#schedule">Daily Schedule</a></li>
@@ -34,17 +53,17 @@
     <li><a href="#q3" class="sub-link">Junior Year</a></li>
     <li><a href="#q4" class="sub-link">Senior Year</a></li>
 </ul>
-
+ 
 <div class="sidebar-gpa" id="sidebar-gpa">
     <div class="gpa-values" id="gpa-values">
         <h3>Unweighted GPA: <span id="unweighted-gpa">0.00</span></h3>
         <h3>Weighted GPA: <span id="weighted-gpa">0.00</span></h3>
     </div>
     <button type="button" class="secondary-button gpa-toggle" id="gpa-toggle-btn" onclick="toggleGpaVisibility()">Hide Stats</button>
-
+ 
     <h3 class="sat-composite-heading">SAT Composite: <span id="sat-composite">0</span></h3>
 </div>
-
+ 
 <div class="sidebar-sat">
     <p class="sidebar-nav-label">SAT Score</p>
     <div class="sat-inputs">
@@ -56,9 +75,9 @@
         </label>
     </div>
 </div>
-
+ 
     </aside>
-
+ 
     <main class="content">
         <div class="search-wrap">
             <div class="search" role="search">
@@ -69,7 +88,7 @@
             </div>
             <p class="search-status" id="psi-search-status" role="status" aria-live="polite"></p>
         </div>
-
+ 
              <div class="dashboard-hero">
                 <div class="hero-top">
                     <div>
@@ -98,7 +117,7 @@
                     
                 </div>
                 
-
+ 
                 <div class="priority-insight" id="priority-insight"></div>
                 <div class="priority-workload">
                     <div class="priority-workload-label">
@@ -110,7 +129,7 @@
                         <div class="workload-bar-overdue" id="priority-workload-overdue"></div>
                     </div>
                 </div>
-
+ 
                 <div class="dropdown-section expanded" id="priority-list-section">
                     <div class="dropdown-header" onclick="toggleDropdown('priority-list-section')">
                         <span>Assignments Due Soon</span>
@@ -120,17 +139,17 @@
                         <div class="priority-list" id="priority-today-list"></div>
                     </div>
                 </div>
-
+ 
                 <div class="priority-divider">
                     <span>Coming Up</span>
                 </div>
-
+ 
                 <div class="priority-stats" id="priority-stats"></div>
-
+ 
                 
             </section>
         </section>
-
+ 
         <!-- Daily Schedule -->
         <section id="schedule" class="dashboard-section">
             <div class="dashboard-grid">
@@ -147,7 +166,7 @@
                             <div class="current-class-timer" id="current-class-timer">No class in session</div>
                         </div>
                     </div>
-
+ 
                     <div class="schedule-header" aria-hidden="true">
                         <div>Class</div>
                         <div>Start</div>
@@ -171,7 +190,7 @@
         </div>
         <span class="task-progress" id="task-progress">0 / 0</span>
     </div>
-
+ 
     <form class="task-form" id="task-form">
         <input 
             type="text" 
@@ -184,7 +203,7 @@
         >
         <button type="submit">Add</button>
     </form>
-
+ 
     <button 
         type="button" 
         class="secondary-button"
@@ -192,7 +211,7 @@
     >
         Delete Completed Tasks
     </button>
-
+ 
     <div class="dropdown-section expanded" id="task-list-section">
         <div class="dropdown-header" onclick="toggleDropdown('task-list-section')">
             <span>Your Tasks</span>
@@ -204,7 +223,7 @@
     </div>
 </aside>
             </div>
-
+ 
             <section class="ui-panel homework-panel" id="homework">
                 <div class="panel-heading">
                     <div>
@@ -212,7 +231,7 @@
                     </div>
                     <span class="task-progress" id="homework-progress">0 / 0</span>
                 </div>
-
+ 
                 <form class="homework-form" id="homework-form">
                     <label>Homework Name
                         <input type="text" id="homework-name" maxlength="120" required placeholder=" ">
@@ -242,7 +261,7 @@
                     </label>
                     <button type="submit">Add Homework</button>
                 </form>
-
+ 
                 <div class="dropdown-section expanded" id="homework-list-section">
                     <div class="dropdown-header" onclick="toggleDropdown('homework-list-section')">
                         <span>Your Homework</span>
@@ -253,7 +272,7 @@
                     </div>
                 </div>
             </section>
-
+ 
             <!-- Assignment Calendar -->
             <section class="ui-panel calendar-panel" id="calendar">
                 <div class="panel-heading">
@@ -267,7 +286,7 @@
                         <button type="button" class="secondary-button calendar-today-btn" onclick="goToCurrentCalendarMonth()">Today</button>
                     </div>
                 </div>
-
+ 
                 <div class="calendar-legend">
                     <span><i class="calendar-dot veryhigh"></i>Very High</span>
                     <span><i class="calendar-dot high"></i>High</span>
@@ -275,30 +294,30 @@
                     <span><i class="calendar-dot low"></i>Low</span>
                     <span><i class="calendar-dot done"></i>Completed</span>
                 </div>
-
+ 
                 <div class="calendar-weekdays">
                     <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
                 </div>
                 <div class="calendar-grid" id="calendar-grid"></div>
             </section>
-
+ 
             <section class="ui-panel schedule-editor" id="schedule-editor">
                 <div class="panel-heading">
                     <div>
                         <h2>Schedule Builder</h2>
                     </div>
                 </div>
-
+ 
                 <form id="schedule-form">
                     <div class="editor-grid">
                         <label>Class Name
                             <input type="text" id="schedule-class-name" required placeholder=" ">
                         </label>
-
+ 
                         <label>Teacher
                             <input type="text" id="schedule-teacher" placeholder=" ">
                         </label>
-
+ 
                         <label>Days
                             <div class="days-picker">
                                 <label class="day-check"><input type="checkbox" value="Monday"><span>Mon</span></label>
@@ -310,15 +329,15 @@
                                 <label class="day-check"><input type="checkbox" value="Sunday"><span>Sun</span></label>
                             </div>
                         </label>
-
+ 
                         <label>Start Time
                             <input type="time" id="schedule-start" required>
                         </label>
-
+ 
                         <label>End Time
                             <input type="time" id="schedule-end" required>
                         </label>
-
+ 
                         <label class="editor-full">
                             <span>Affected by Bell Page</span>
                             <select id="bell-affected" onchange="toggleBellSettings()">
@@ -326,7 +345,7 @@
                                 <option value="yes">Absolutely, it's school</option>
                             </select>
                         </label>
-
+ 
                         <div class="bell-settings" id="bell-settings">
                             <label>Bell Start Time
                                 <input type="time" id="bell-start">
@@ -337,13 +356,13 @@
                             <p class="bell-note">Only used when 1 Hour Advisory is on</p>
                         </div>
                     </div>
-
+ 
                     <div class="schedule-actions">
                         <button type="submit">Add Class</button>
                         <button type="button" class="secondary-button" onclick="clearScheduleForm()">Clear</button>
                     </div>
                 </form>
-
+ 
                 <div class="dropdown-section expanded" id="saved-schedule-section">
                     <div class="dropdown-header" onclick="toggleDropdown('saved-schedule-section')">
                         <span>Your Classes</span>
@@ -355,27 +374,27 @@
                 </div>
             </section>
         </section>
-
+ 
         <!-- GPA Calculator -->
         <section id="gpa" class="dashboard-section">
             <h2>GPA Calculator</h2>
-
+ 
             <form id="add-class-form">
                 <label>
                     Class Name:
                     <input type="text" id="class-name" required>
                 </label>
-
+ 
                 <label>
                     Credits:
                     <input id="credit-hours" required>
                 </label>
-
+ 
                 <label>
                     Number Grade:
                     <input type="number" id="grade" min="0" max="100" required>
                 </label>
-
+ 
                 <label>
                     Year:
                     <select id="quarter">
@@ -385,7 +404,7 @@
                         <option value="q4">Senior</option>
                     </select>
                 </label>
-
+ 
                 <label>
                     Class Type:
                     <select id="class-level">
@@ -394,26 +413,26 @@
                         <option value="ap">AP</option>
                     </select>
                 </label>
-
+ 
                 <button type="submit">Add Class</button>
             </form>
-
+ 
             <div id="course-sections">
                 <div id="q1" class="quarter-section">
                     <h3 onclick="toggleQuarter('q1')"><span>Freshman Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
                 </div>
-
+ 
                 <div id="q2" class="quarter-section">
                     <h3 onclick="toggleQuarter('q2')"><span>Sophomore Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
                 </div>
-
+ 
                 <div id="q3" class="quarter-section">
                     <h3 onclick="toggleQuarter('q3')"><span>Junior Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
                 </div>
-
+ 
                 <div id="q4" class="quarter-section">
                     <h3 onclick="toggleQuarter('q4')"><span>Senior Classes</span><span class="quarter-arrow">&#9656;</span></h3>
                     <ul class="course-list"></ul>
@@ -427,7 +446,7 @@
     <script src="psi-inspector.js" defer></script>
     <script src="psi-extras.js" defer></script>
       <footer class="site-footer">
-
+ 
     <div class="footer-links">
         <a class="footer-link" href="mailto:10016357@philasd.org">
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="m4 6 8 7 8-7"/></svg>
@@ -437,14 +456,16 @@
             <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6"/></svg>
             Send feedback
         </a>
-
+ 
         <span class="footer-note">Data is stored locally</span>
         <span class="footer-credit">Made by Johnfer Quispe · Class of 2027</span>
         <span class="footer-version">Palumbo Student Interface v2.7.5</span>
-
-
+ 
+ 
     </div>
 </footer>
     </main>
 </body>
 </html>
+ 
+Claude finished the response
