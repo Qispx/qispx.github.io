@@ -151,13 +151,8 @@ function renderOverview() {
 
   const testsTmrw = open.filter(h => h.type === 'test' && daysUntil(h.dueDate, today) === 1).length;
 
-  const nowS = getSecondsNow();
-
-  const next = getEffectiveSchedule(WD[new Date().getDay()])
-
-    .filter(c => timeToSeconds(c.startTime) > nowS)
-
-    .sort((a, b) => timeToSeconds(a.startTime) - timeToSeconds(b.startTime))[0];
+  const sched = getScheduleState(), next = sched.next;   // same source as the Up Next card and the tab title
+  const noNext = { 'no-schedule': 'no schedule yet', 'none-today': 'no classes today' }[sched.status] || 'no more classes today';
 
   const dl = deadlineRows()[0];
 
@@ -171,7 +166,7 @@ function renderOverview() {
 
       <div class="ov-stat ${testsTmrw ? 'warn' : ''}"><b>${testsTmrw}</b><span>test${testsTmrw === 1 ? '' : 's'} tomorrow</span></div>
 
-      <div class="ov-stat"><b>${next ? escapeHtml(formatStoredTime(next.startTime)) : '—'}</b><span>${next ? `next: ${escapeHtml(next.name)}` : 'no more classes today'}</span></div>
+      <div class="ov-stat"><b>${next ? escapeHtml(formatStoredTime(next.startTime)) : '—'}</b><span>${next ? `next: ${escapeHtml(next.name)}` : noNext}</span></div>
 
       <div class="ov-stat"><b>${tasks.filter(t => t.done).length}/${tasks.length}</b><span>daily tasks done</span></div>
 
@@ -190,6 +185,9 @@ window.renderPriorityDashboard = () => { _rp(); renderOverview(); };
 const _rt = window.renderTasks;
 
 window.renderTasks = () => { _rt(); renderOverview(); };
+// Keep the overview's "next:" stat in step with the Up Next card and tab title (it otherwise only re-renders every 30s).
+let overviewKey = '';
+window.addEventListener('psi:schedule-tick', e => { const st = e.detail, k = `${st.status}|${st.current?.name}|${st.next?.name}`; if (k !== overviewKey) { overviewKey = k; renderOverview(); } });
 
 /* ---------- Calendar: month/week/day + filters (same homework data) ---------- */
 
@@ -1083,7 +1081,7 @@ const dayList = d => getEffectiveSchedule(d).sort((a, b) => timeToMinutes(a.star
 
 const rng = c => `${formatStoredTime(c.startTime)}\u2013${formatStoredTime(c.endTime)}`;
 
-const dur = m => m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}` : `${m} min`;
+const dur = m => formatDuration(m);
 
 const isLunch = c => /lunch/i.test(c.name);
 
@@ -1181,7 +1179,7 @@ function renderSchedPreview() {
 
   if (!customSchedule.length) body = '<div class="schedule-empty">No classes yet. Add one with the form below.</div>';
 
-  else if (SB.view === 'week') body = `<div class="pv-week">${DAYS.map(d => `<div class="pv-col${d === SB.day ? ' sel' : ''}"><h4>${d.slice(0, 3)}</h4>${dayList(d).map(c => `<div class="pv-item"><span>${formatStoredTime(c.startTime)}</span>${escapeHtml(c.name)}</div>`).join('') || '<div class="pv-none">Free</div>'}</div>`).join('')}</div>`;
+  else if (SB.view === 'week') body = `<div class="pv-week">${DAYS.map(d => `<div class="pv-col${d === SB.day ? ' sel' : ''}"><h3>${d.slice(0, 3)}</h3>${dayList(d).map(c => `<div class="pv-item"><span>${formatStoredTime(c.startTime)}</span>${escapeHtml(c.name)}</div>`).join('') || '<div class="pv-none">Free</div>'}</div>`).join('')}</div>`;
 
   else if (SB.view === 'day') body = `<div class="schedule-list">${dayList(SB.day).map(c => `<div class="pv-row"><b>${escapeHtml(c.name)}</b><span>${rng(c)}</span><span>${dur(mins(c))}</span></div>`).join('') || `<div class="schedule-empty">No classes on ${SB.day}.</div>`}</div>`;
 
@@ -1193,7 +1191,7 @@ function renderSchedPreview() {
 
 function builderSide() {
 
-  const L = dayList(SB.day), isToday = SB.day === WD[new Date().getDay()], nowM = getSecondsNow() / 60;
+  const L = dayList(SB.day), isToday = SB.day === WD[new Date().getDay()], cur = isToday ? getScheduleState().current : null;
 
   const cls = L.filter(c => !isLunch(c)), lunch = L.filter(isLunch);
 
@@ -1207,7 +1205,7 @@ function builderSide() {
 
   const list = L.length
 
-    ? `<ul class="sched-list">${L.map(c => `<li class="sched-row${isToday && timeToMinutes(c.startTime) <= nowM && nowM < timeToMinutes(c.endTime) ? ' now' : ''}"><span>${formatStoredTime(c.startTime)}</span><b title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</b></li>`).join('')}</ul>`
+    ? `<ul class="sched-list">${L.map(c => `<li class="sched-row${cur && cur.name === c.name && cur.startTime === c.startTime ? ' now' : ''}"><span>${formatStoredTime(c.startTime)}</span><b title="${escapeHtml(c.name)}">${escapeHtml(c.name)}</b></li>`).join('')}</ul>`
 
     : `<p class="side-note">No classes on ${SB.day}.</p>`;
 
@@ -1264,6 +1262,9 @@ sw.addEventListener('click', e => {
 });
 
 renderSchedPreview();
+
+const VIEW_TITLES = { calendar: 'Assignment Calendar', college: 'College', builder: 'Schedule Builder', gym: 'Gym' };
+Object.entries(VIEW_TITLES).forEach(([k, t]) => views[k].insertAdjacentHTML('afterbegin', `<h1 class="sr-only">${t}</h1>`));
 
 /* ---------- Boot ---------- */
 

@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#002222">
-    <meta name="color-scheme" content="dark">
+    <meta name="description" content="PSI: schedule, homework, GPA, calendar, college planning and gym tracking for Palumbo students. Data stays in your browser.">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#F5FAFC" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#091925" media="(prefers-color-scheme: dark)">
     <title>Palumbo Student Interface</title>
+    <script>
+        /* Applies a saved Light/Dark choice before the first paint so the page never flashes the wrong theme.
+           "System" (the default) stores nothing and follows the OS. The full controller lives in psi-ui.js. */
+        try { var t = localStorage.getItem("psi-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -14,10 +21,11 @@
 
 </head>
 <body>
+    <a class="skip-link" href="#main">Skip to content</a>
 
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-head">
-            <h2><span class="brand-full">Palumbo Student Interface</span><span class="brand-short" aria-hidden="true">PSI</span></h2>
+            <p class="sidebar-brand"><span class="brand-full">Palumbo Student Interface</span><span class="brand-short" aria-hidden="true">PSI</span></p>
             <button type="button" class="sidebar-collapse" id="sidebar-collapse" aria-expanded="true" aria-label="Collapse sidebar" title="Collapse sidebar">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
             </button>
@@ -59,9 +67,18 @@
     </div>
 </div>
 
+<div class="theme-switch">
+    <p class="sidebar-nav-label" id="theme-label">Appearance</p>
+    <div class="side-seg" role="group" aria-labelledby="theme-label">
+        <button type="button" data-theme-mode="system" aria-pressed="true">System</button>
+        <button type="button" data-theme-mode="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-mode="dark" aria-pressed="false">Dark</button>
+    </div>
+</div>
+
     </aside>
 
-    <main class="content">
+    <main class="content" id="main" tabindex="-1">
         <div class="search-wrap">
             <div class="search" role="search">
                 <svg class="search-ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
@@ -422,12 +439,6 @@
                 </div>
             </div>
         </section>
-    <script src="script.js" defer></script>     
-    <script src="v3.js" defer></script>
-    <script src="gym.js" defer></script>
-    <script src="psi-ui.js" defer></script>
-    <script src="psi-inspector.js" defer></script>
-    <script src="psi-extras.js" defer></script>
       <footer class="site-footer">
 
     <div class="footer-links">
@@ -448,5 +459,12 @@
     </div>
 </footer>
     </main>
+
+    <script src="script.js" defer></script>
+    <script src="v3.js" defer></script>
+    <script src="gym.js" defer></script>
+    <script src="psi-ui.js" defer></script>
+    <script src="psi-inspector.js" defer></script>
+    <script src="psi-extras.js" defer></script>
 </body>
 </html>

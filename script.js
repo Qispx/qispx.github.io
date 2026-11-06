@@ -66,6 +66,7 @@ function escapeHtml(value) {
 /* ---------- GPA ---------- */
 const gradeToPoints = [[93, 4.0], [90, 3.7], [87, 3.3], [83, 3.0], [80, 2.7], [77, 2.3], [73, 2.0], [70, 1.7], [67, 1.3], [63, 1.0], [60, 0.7], [0, 0]];
 const classLevelAdjustment = { normal: 0, honors: 0.6, ap: 0.8 };
+const levelLabel = { honors: "Honors", ap: "AP" };
 const pointsFor = grade => gradeToPoints.find(([min]) => grade >= min)[1];
 
 function renderClasses() {
@@ -76,7 +77,7 @@ function renderClasses() {
         const item = document.createElement("li");
         item.className = "course-item";
         item.innerHTML = `
-            <span class="course-item-name">${escapeHtml(course.name)} - ${course.creditHours} Credits - Grade: ${course.grade}</span>
+            <span class="course-item-name">${escapeHtml(course.name)} <span class="course-item-meta">${course.creditHours} ${course.creditHours === 1 ? "credit" : "credits"}${levelLabel[course.classLevel] ? ` · ${levelLabel[course.classLevel]}` : ""}</span> <span class="course-item-grade"><span class="sr-only">Grade: </span>${course.grade}</span></span>
             <div class="course-item-actions">
                 <button class="edit-btn" type="button">Edit</button>
                 <button class="delete-btn" type="button">Delete</button>
@@ -481,6 +482,20 @@ function formatCountdown(total) {
     return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+/* Durations. The one formatter every duration in PSI goes through.
+   short: "5 min", "1 hr", "1 hr 30 min", "8 hr 20 min"   long: "1 hour 30 minutes"
+   Whole minutes only (rounded to nearest); zero, negative and non-numeric input read as "0 min". */
+function formatDuration(totalMinutes, style = "short") {
+    const mins = Math.round(Number(totalMinutes));
+    const long = style === "long";
+    const unit = (n, short, word) => long ? `${n} ${word}${n === 1 ? "" : "s"}` : `${n} ${short}`;
+    if (!Number.isFinite(mins) || mins <= 0) return unit(0, "min", "minute");
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return [h && unit(h, "hr", "hour"), m && unit(m, "min", "minute")].filter(Boolean).join(" ");
+}
+/* Time until a future moment, from seconds. Rounds UP to the minute so it never reads "0 min" before the event. */
+const formatUntil = (seconds, style) => formatDuration(Math.ceil(Math.max(0, seconds) / 60), style);
+
 /* Times a class uses in the current bell mode; null if it doesn't meet in that mode (Day Off only) */
 function timesFor(c) {
     if (bellMode === "dayoff") return c.dayOffAffected ? { start: c.dayOffStart, end: c.dayOffEnd } : null;
@@ -492,6 +507,51 @@ function getEffectiveSchedule(dayName) {
         const t = timesFor(c);
         return t && { name: c.name, teacher: c.teacher || "", startTime: t.start, endTime: t.end };
     }).filter(Boolean);
+}
+
+/* Schedule state: the single source of truth for "what class is it?".
+   The schedule list, the dashboard Up Next card, the browser-tab title and the overview stat all read this object,
+   so they cannot disagree. Built from the same effective schedule (bell mode applied) the rest of PSI uses.
+   status: "no-schedule"  nothing saved yet
+           "none-today"   classes exist, but none today (weekend, day off, or bell mode removes them)
+           "in-class"     a class is in session (.current, .left seconds remaining)
+           "upcoming"     before the first class or in a passing period (.next, .toNext seconds)
+           "done"         today's last class has ended
+   Not modelled: holidays and special schedules, because PSI stores no such data. */
+function getScheduleState(date = new Date()) {
+    const nowSec = date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds();
+    const dayOf = name => getEffectiveSchedule(name)
+        .map(c => ({ ...c, start: timeToSeconds(c.startTime), end: timeToSeconds(c.endTime) }))
+        .sort((a, b) => a.start - b.start);
+    const dayIndex = date.getDay();
+    const today = dayOf(DAY_NAMES[dayIndex]);
+    const state = { status: "", now: nowSec, today, current: null, next: null, left: 0, toNext: 0, later: null };
+
+    state.current = today.find(c => nowSec >= c.start && nowSec < c.end) || null;
+    state.next = today.find(c => c.start > nowSec) || null;
+    if (state.current) { state.status = "in-class"; state.left = state.current.end - nowSec; }
+    else if (state.next) { state.status = "upcoming"; }
+    else state.status = today.length ? "done" : (customSchedule.length ? "none-today" : "no-schedule");
+    if (state.next) state.toNext = state.next.start - nowSec;
+
+    // When nothing is left today, point at the next day that has classes (real schedule data only).
+    if (!state.next) {
+        for (let offset = 1; offset <= 7; offset++) {
+            const dayName = DAY_NAMES[(dayIndex + offset) % 7], classes = dayOf(dayName);
+            if (classes.length) { state.later = { dayName, offset, cls: classes[0] }; break; }
+        }
+    }
+    return state;
+}
+/* Browser-tab title for a schedule state, e.g. "18 min · AP Physics C | PSI" */
+function scheduleTitle(state) {
+    switch (state.status) {
+        case "in-class": return `Now · ${state.current.name} | PSI`;
+        case "upcoming": return `${formatUntil(state.toNext)} · ${state.next.name} | PSI`;
+        case "done": return "No more classes · PSI";
+        case "none-today": return "No classes today · PSI";
+        default: return "Palumbo Student Interface";
+    }
 }
 
 function setBellMode(mode) {
@@ -566,43 +626,29 @@ byId("schedule-form").addEventListener("submit", event => {
 });
 
 /* ---------- Today's classes + countdown ---------- */
-function updateCurrentClassTimer(className, remaining) {
-    const el = byId("current-class-timer");
-    if (!el) return;
-    el.textContent = className ? `${className} — in session` : "No class in session";
-    document.title = className ? `${formatCountdown(remaining)} · Palumbo Student Interface` : "Palumbo Student Interface";
-}
-
+/* Runs once a second (the only schedule timer) and whenever the schedule or bell mode changes.
+   Everything time-related on screen is derived from one getScheduleState() call per tick. */
+let scheduleListHtml = "";
 function updateTimeRemaining() {
-    const now = getSecondsNow();
-    const dayName = DAY_NAMES[new Date().getDay()];
-    byId("day-name").textContent = `Class Schedule for ${dayName}`;
-    const today = getEffectiveSchedule(dayName).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
-    const list = byId("class-list");
-    list.innerHTML = "";
+    const state = getScheduleState();
+    byId("day-name").textContent = `Class Schedule for ${DAY_NAMES[new Date().getDay()]}`;
 
-    if (!today.length) {
-        list.innerHTML = '<div class="schedule-empty">No classes scheduled for today.</div>';
-        return updateCurrentClassTimer(null, null);
-    }
+    const html = state.today.length
+        ? state.today.map(c => {
+            const current = c === state.current;
+            const remaining = current ? `${formatCountdown(state.left)} remaining`
+                : state.now < c.start ? `${formatUntil(c.start - state.now)} until start` : "Not in Session";
+            return `<div class="schedule-item${current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${c.teacher ? `<small class="schedule-teacher">${escapeHtml(c.teacher)}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining">${remaining}</div></div>`;
+        }).join("")
+        : '<div class="schedule-empty">No classes scheduled for today.</div>';
+    // Only touch the DOM when the text changes (outside class time that is once a minute, not once a second).
+    if (html !== scheduleListHtml) { byId("class-list").innerHTML = html; scheduleListHtml = html; }
 
-    let currentName = null, currentLeft = null;
-    today.forEach(c => {
-        const start = timeToSeconds(c.startTime), end = timeToSeconds(c.endTime);
-        const current = now >= start && now < end;
-        let remaining = "Not in Session";
-        if (current) {
-            currentName = c.name; currentLeft = end - now;
-            remaining = `${formatCountdown(currentLeft)} remaining`;
-        } else if (now < start) {
-            remaining = `${Math.ceil((start - now) / 60)} min until start`;
-        }
-        const row = document.createElement("div");
-        row.className = `schedule-item${current ? " current-class" : ""}`;
-        row.innerHTML = `<div class="schedule-class-name">${escapeHtml(c.name)}${c.teacher ? `<small class="schedule-teacher">${escapeHtml(c.teacher)}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining">${remaining}</div>`;
-        list.appendChild(row);
-    });
-    updateCurrentClassTimer(currentName, currentLeft);
+    const timer = byId("current-class-timer");
+    if (timer) timer.textContent = state.current ? `${state.current.name} — in session` : "No class in session";
+    const title = scheduleTitle(state);
+    if (document.title !== title) document.title = title;
+    window.dispatchEvent(new CustomEvent("psi:schedule-tick", { detail: state }));   // card + overview listen; one state, many views
 }
 
 /* ---------- Greeting, clock, weather ---------- */
@@ -712,6 +758,8 @@ updateTimeRemaining();
 loadWeather();
 setInterval(updateClock, 1000);
 setInterval(updateTimeRemaining, 1000);
+// Browsers throttle timers in background tabs; catch up the moment the tab is visible again.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) updateTimeRemaining(); });
 setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);
 setInterval(maybeResetDailyTasks, 60 * 1000);
 setInterval(loadWeather, 30 * 60 * 1000);

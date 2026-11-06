@@ -60,7 +60,8 @@
   const nativeConfirm = window.confirm.bind(window), nativePrompt = window.prompt.bind(window);
   let lastClick = { target: null, at: 0 };
   let approved = null;
-  document.addEventListener('click', e => { lastClick = { target: e.target, at: Date.now() }; }, true);
+  // Clicks inside the dialog itself must not overwrite the remembered target, or "OK" would replay itself instead of the action.
+  document.addEventListener('click', e => { if (!e.target.closest('.psi-dialog')) lastClick = { target: e.target, at: Date.now() }; }, true);
   const fromClick = () => lastClick.target && Date.now() - lastClick.at < 1500;
   function replay(answer) {
     const t = lastClick.target;

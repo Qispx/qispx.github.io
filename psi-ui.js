@@ -1,5 +1,5 @@
 /* psi-ui.js — additive UI layer. Reads the DOM your other scripts render; never writes to your data.
-   Load after gym.js. Features: global search, collapsible sidebar, accessibility sync. */
+   Load after gym.js. Features: global search, collapsible sidebar, accessibility sync, theme preference, Up Next card. */
 (() => {
   'use strict';
   const $ = (s, r = document) => r.querySelector(s);
@@ -160,4 +160,84 @@
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); h.click(); }
     });
   });
+
+  /* ---------- Theme: System / Light / Dark ----------
+     The CSS does the work: no attribute follows the OS (so an OS change applies live, no JS needed), and
+     data-theme="light|dark" overrides it. A tiny inline script in <head> applies a saved choice before first paint. */
+  const THEME_KEY = 'psi-theme';
+  const root = document.documentElement;
+  const themeButtons = $$('[data-theme-mode]');
+  const themeMetas = $$('meta[name="theme-color"]');
+  const themeMetaDefaults = themeMetas.map(m => m.content);
+  const savedTheme = () => { const t = store.get(THEME_KEY); return t === 'light' || t === 'dark' ? t : 'system'; };
+
+  function applyTheme(mode, remember) {
+    if (mode === 'system') delete root.dataset.theme; else root.dataset.theme = mode;
+    themeButtons.forEach(b => {
+      const on = b.dataset.themeMode === mode;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    // Browser chrome colour: an explicit choice overrides both media-specific metas; System restores them.
+    const bg = getComputedStyle(root).getPropertyValue('--bg').trim();
+    themeMetas.forEach((m, i) => { m.content = mode === 'system' || !bg ? themeMetaDefaults[i] : bg; });
+    if (remember) store.set(THEME_KEY, mode);
+  }
+  if (themeButtons.length) {
+    applyTheme(savedTheme(), false);
+    themeButtons.forEach(b => b.addEventListener('click', () => applyTheme(b.dataset.themeMode, true)));
+  }
+
+  /* ---------- Up Next card (dashboard) ----------
+     Renders whatever script.js's getScheduleState() says. Same object as the tab title and the schedule list,
+     delivered once a second by updateTimeRemaining() as a "psi:schedule-tick" event. No timer of its own. */
+  const hero = $('.dashboard-hero');
+  if (hero && typeof getScheduleState === 'function') {
+    const card = document.createElement('section');
+    card.className = 'ui-panel next-class';
+    card.id = 'next-class';
+    card.setAttribute('aria-labelledby', 'nc-eyebrow');
+    card.innerHTML = `<div class="nc-main"><p class="nc-eyebrow" id="nc-eyebrow"></p><p class="nc-name"></p><p class="nc-meta"></p></div>
+      <div class="nc-count"><b></b><span></span><button type="button" class="secondary-button" data-view="builder" hidden>Open Schedule Builder</button></div>`;
+    hero.after(card);
+    const part = sel => $(sel, card);
+    const span = c => `${formatStoredTime(c.startTime)}–${formatStoredTime(c.endTime)}`;
+    const withTeacher = c => span(c) + (c.teacher ? ` · ${c.teacher}` : '');
+    const laterText = st => st.later
+      ? `Next: ${st.later.offset === 1 ? 'Tomorrow' : st.later.dayName} at ${formatStoredTime(st.later.cls.startTime)} · ${st.later.cls.name}`
+      : 'No classes scheduled in the next 7 days.';
+    let last = '';
+
+    const render = st => {
+      let v;   // [eyebrow, name, meta, big number, label, state class, show builder button]
+      switch (st.status) {
+        case 'in-class':
+          v = ['Now', st.current.name, withTeacher(st.current) + (st.next ? ` · Then ${st.next.name} at ${formatStoredTime(st.next.startTime)}` : ' · Last class today'),
+               formatCountdown(st.left), 'remaining', 'is-now']; break;
+        case 'upcoming':
+          v = ['Up next', st.next.name, withTeacher(st.next), formatUntil(st.toNext), 'until start', '']; break;
+        case 'done':
+          v = ['Today', 'No more classes today', `All of today’s classes have ended. ${laterText(st)}`, '', '', 'is-idle']; break;
+        case 'none-today':
+          v = ['Today', 'No classes today', laterText(st), '', '', 'is-idle']; break;
+        default:
+          v = ['Up next', 'No schedule yet', 'Add your classes in the Schedule Builder to see what’s next.', '', '', '', true];
+      }
+      const key = v.join('|');
+      if (key === last) return;           // most ticks change nothing; skip the DOM work
+      last = key;
+      part('.nc-eyebrow').textContent = v[0];
+      part('.nc-name').textContent = v[1];
+      part('.nc-meta').textContent = v[2];
+      part('.nc-count b').textContent = v[3];
+      part('.nc-count span').textContent = v[4];
+      part('.nc-count b').hidden = part('.nc-count span').hidden = !v[3];
+      part('.nc-count button').hidden = !v[6];
+      part('.nc-count').hidden = !v[3] && !v[6];
+      card.classList.toggle('is-now', v[5] === 'is-now');
+      card.classList.toggle('is-idle', v[5] === 'is-idle');
+    };
+    window.addEventListener('psi:schedule-tick', e => render(e.detail));
+    render(getScheduleState());   // script.js's first tick ran before this file loaded
+  }
 })();

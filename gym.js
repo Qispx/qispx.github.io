@@ -341,7 +341,12 @@ root.addEventListener('change', e => {
     G.session = { wid: w.id, done: [...s].filter(x => w.exercises.some(ex => String(ex.id) === String(x))) };
     row.classList.toggle('on', t.checked);
     $('#gym-cnt').textContent = `${G.session.done.length} / ${w.exercises.length}`;
-    $('.gym-complete')?.classList.toggle('ready', G.session.done.length >= w.exercises.length);
+    const btn = $('.gym-complete');   // keep every readiness signal in step with renderHero(): class, disabled, aria and label
+    if (btn) {
+      const ready = w.exercises.length > 0 && G.session.done.length >= w.exercises.length;
+      btn.classList.toggle('ready', ready); btn.disabled = !ready; btn.setAttribute('aria-disabled', String(!ready));
+      btn.lastElementChild.textContent = ready ? 'Complete workout' : 'Complete all exercises first';
+    }
     return save();
   }
   const gi = t.dataset?.gInput; if (!gi) return;
