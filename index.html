@@ -322,6 +322,19 @@
                             <input type="text" id="schedule-room" maxlength="20" placeholder=" ">
                         </label>
 
+                        <label>Bell period <small>(optional)</small>
+                            <input type="text" id="schedule-period" maxlength="30" list="bell-period-names" placeholder=" ">
+                            <datalist id="bell-period-names"></datalist>
+                        </label>
+
+                        <label>Meets on
+                            <select id="schedule-rotation">
+                                <option value="">Every school day</option>
+                                <option value="A">A-Days only</option>
+                                <option value="B">B-Days only</option>
+                            </select>
+                        </label>
+
                         <label>Days
                             <div class="days-picker">
                                 <label class="day-check"><input type="checkbox" value="Monday"><span>Mon</span></label>
@@ -464,6 +477,7 @@
 </footer>
     </main>
 
+    <script src="psi-bell.js" defer></script>
     <script src="script.js" defer></script>
     <script src="v3.js" defer></script>
     <script src="gym.js" defer></script>

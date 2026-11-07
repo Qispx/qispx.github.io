@@ -33,13 +33,14 @@ function loadData() {
     return {
         classes: arr(s.classes),
         tasks: arr(s.tasks),
-        schedule: arr(s.schedule).map(c => ({ ...c, teacher: String(c.teacher ?? "").trim(), room: String(c.room ?? "").trim() })),
+        schedule: arr(s.schedule).map(c => ({ ...c, teacher: String(c.teacher ?? "").trim(), room: String(c.room ?? "").trim(), period: String(c.period ?? "").trim(), rotation: c.rotation === "A" || c.rotation === "B" ? c.rotation : "" })),
         homework: arr(s.homework).map(h => ({
             ...h,
             density: DENSITIES.includes(h.density) ? h.density : "moderate",
             type: TYPES.includes(h.type) ? h.type : "assignment"
         })),
         bellMode: BELL_MODES.includes(s.bellMode) ? s.bellMode : "normal",
+        bell: PSI_BELL.normalizeConfig(s.bell),   // A/B rotation, non-school dates, date overrides: the person's own data, apart from the imported sheet
         gpaHidden: Boolean(s.gpaHidden),
         sat: { math: num(s.sat?.math), reading: num(s.sat?.reading) },
         lastAutoClear: str(s.lastAutoClear),
@@ -52,7 +53,8 @@ let data = loadData();
 let tasks = data.tasks;
 let homework = data.homework;
 let customSchedule = data.schedule;
-let bellMode = data.bellMode;
+let bellMode = data.bellMode;   // fallback schedule only; see "Which schedule applies"
+PSI_BELL.bind(() => data.bell);
 
 function saveData() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {} }
 function saveTasks() { data.tasks = tasks; saveData(); }
@@ -504,49 +506,85 @@ function formatRemaining(seconds) {
 const roomLabel = room => { room = String(room || "").trim(); return !room ? "" : /^[A-Za-z]?\d[\w-]{0,5}$/.test(room) ? `Room ${room}` : room; };
 const classMeta = c => [c.teacher, roomLabel(c.room)].filter(Boolean).join(" · ");
 
-/* Times a class uses in the current bell mode; null if it doesn't meet in that mode (Day Off only) */
-function timesFor(c) {
-    if (bellMode === "dayoff") return c.dayOffAffected ? { start: c.dayOffStart, end: c.dayOffEnd } : null;
-    if (bellMode === "hour" && c.bellAffected) return { start: c.bellStart, end: c.bellEnd };
+/* ---------- Which schedule applies ---------- */
+/* Schedule ids: "normal" | "hour" | "dayoff" (built from the person's own classes) or "imp:<slug>" (imported from the official
+   sheet, see psi-bell.js, which also decides which one applies on a date). `bellMode` is now only the fallback used when
+   neither an override, the A/B rotation nor the sheet says otherwise: with nothing configured PSI behaves exactly as before.
+   `previewSchedule` is what the schedule page is showing; null means "follow the active schedule". Previewing never changes
+   what is active: that is decided by date (override > A/B > weekday > fallback). */
+let previewSchedule = null;
+const todayKey = () => PSI_BELL.schoolParts().key;
+const activeFor = key => PSI_BELL.resolve(key, bellMode);
+const viewSchedule = () => previewSchedule && PSI_BELL.isValid(previewSchedule) ? previewSchedule : (activeFor(todayKey()).id || bellMode);
+
+/* A class tied to an A/B day only meets on that letter (when the date's letter is known) */
+const rotationOk = (c, letter) => !c.rotation || !letter || c.rotation === letter;
+/* "Period 3", "3rd period", "Pd 3" and "3" all name the same period */
+const periodKey = s => String(s || "").toLowerCase().replace(/\b(period|per|pd|block)\b/g, "").replace(/(\d+)(st|nd|rd|th)\b/g, "$1").replace(/[^a-z0-9]/g, "");
+const samePeriod = (a, b) => periodKey(a) !== "" && periodKey(a) === periodKey(b);
+
+/* Times a class uses in a built-in schedule; null if it doesn't meet in it (Day Off only) */
+function timesFor(c, id = viewSchedule()) {
+    if (id === "dayoff") return c.dayOffAffected ? { start: c.dayOffStart, end: c.dayOffEnd } : null;
+    if (id === "hour" && c.bellAffected) return { start: c.bellStart, end: c.bellEnd };
     return { start: c.start, end: c.end };
 }
-function getEffectiveSchedule(dayName) {
-    return customSchedule.filter(c => c.days.includes(dayName)).map(c => {
-        const t = timesFor(c);
+/* What happens on a weekday under one schedule: [{ name, teacher, room, startTime, endTime }].
+   Imported schedule: the official periods, each named after the person's class linked to that period (else the period's own name).
+   Built-in schedule: the person's classes with the times set for that schedule. */
+function scheduleEntries(dayName, id, letter) {
+    const periods = PSI_BELL.periodsOf(id);
+    const mine = c => c.days.includes(dayName) && rotationOk(c, letter);
+    if (periods) {
+        return periods.map(p => {
+            const c = customSchedule.find(c => c.period && samePeriod(c.period, p.name) && mine(c));
+            return { name: c ? c.name : p.name, teacher: c?.teacher || "", room: c?.room || "", period: p.name, startTime: p.start, endTime: p.end };
+        });
+    }
+    return customSchedule.filter(mine).map(c => {
+        const t = timesFor(c, id);
         return t && { name: c.name, teacher: c.teacher || "", room: c.room || "", startTime: t.start, endTime: t.end };
     }).filter(Boolean);
 }
+/* The schedule page / builder preview: whatever is being viewed (no date, so no A/B filter) */
+function getEffectiveSchedule(dayName) { return scheduleEntries(dayName, viewSchedule(), null); }
 
 /* Schedule state: the single source of truth for "what class is it?".
    The schedule list, the dashboard Up Next card, the browser-tab title and the overview stat all read this object,
-   so they cannot disagree. Built from the same effective schedule (bell mode applied) the rest of PSI uses.
-   status: "no-schedule"  nothing saved yet
-           "none-today"   classes exist, but none today (weekend, day off, or bell mode removes them)
+   so they cannot disagree. Dates and times are read in the school's time zone (America/New_York), not the device's.
+   status: "no-schedule"  nothing saved and nothing imported
+           "none-today"   no school, or nothing scheduled today (see .schedule.closed / .schedule.label)
            "in-class"     a class is in session (.current, .left seconds remaining)
            "upcoming"     before the first class or in a passing period (.next, .toNext seconds)
            "done"         today's last class has ended
-   Not modelled: holidays and special schedules, because PSI stores no such data. */
+   .schedule = { id, name, source, letter, closed, label }: which schedule applies today and why (override / rotation / weekday / fallback). */
 function getScheduleState(date = new Date()) {
-    const nowSec = date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds();
-    const dayOf = name => getEffectiveSchedule(name)
-        .map(c => ({ ...c, start: timeToSeconds(c.startTime), end: timeToSeconds(c.endTime) }))
-        .sort((a, b) => a.start - b.start);
-    const dayIndex = date.getDay();
-    const today = dayOf(DAY_NAMES[dayIndex]);
-    const state = { status: "", now: nowSec, today, current: null, next: null, left: 0, toNext: 0, later: null };
+    const sp = PSI_BELL.schoolParts(date), nowSec = sp.sec;
+    const dayAt = key => {
+        const r = activeFor(key);
+        const list = r.id ? scheduleEntries(PSI_BELL.weekdayOf(key), r.id, r.letter)
+            .map(c => ({ ...c, start: timeToSeconds(c.startTime), end: timeToSeconds(c.endTime) }))
+            .filter(c => Number.isFinite(c.start) && Number.isFinite(c.end) && c.end > c.start)
+            .sort((a, b) => a.start - b.start) : [];
+        return { r, list };
+    };
+    const { r, list: today } = dayAt(sp.key);
+    const state = { status: "", now: nowSec, dateKey: sp.key, weekday: sp.weekday, today, current: null, next: null, left: 0, toNext: 0, later: null,
+        schedule: { id: r.id, name: r.id ? PSI_BELL.nameOf(r.id) : r.label || "No school", source: r.source, letter: r.letter, closed: r.closed, label: r.label } };
 
     state.current = today.find(c => nowSec >= c.start && nowSec < c.end) || null;
     state.next = today.find(c => c.start > nowSec) || null;
     if (state.current) { state.status = "in-class"; state.left = state.current.end - nowSec; }
     else if (state.next) { state.status = "upcoming"; }
-    else state.status = today.length ? "done" : (customSchedule.length ? "none-today" : "no-schedule");
+    else state.status = today.length ? "done" : (customSchedule.length || PSI_BELL.schedules.length ? "none-today" : "no-schedule");
     if (state.next) state.toNext = state.next.start - nowSec;
 
-    // When nothing is left today, point at the next day that has classes (real schedule data only).
+    // When nothing is left today, point at the next date that has classes. Each date is resolved on its own
+    // (it may be a B day, an override, a closure), never assumed to repeat today's schedule.
     if (!state.next) {
-        for (let offset = 1; offset <= 7; offset++) {
-            const dayName = DAY_NAMES[(dayIndex + offset) % 7], classes = dayOf(dayName);
-            if (classes.length) { state.later = { dayName, offset, cls: classes[0] }; break; }
+        for (let offset = 1; offset <= 14; offset++) {
+            const key = PSI_BELL.addDays(sp.key, offset), later = dayAt(key);
+            if (later.list.length) { state.later = { dayName: PSI_BELL.weekdayOf(key), offset, cls: later.list[0], dateKey: key, scheduleName: PSI_BELL.nameOf(later.r.id) }; break; }
         }
     }
     return state;
@@ -558,19 +596,36 @@ function scheduleTitle(state) {
         case "in-class": return `Ends in ${formatRemaining(state.left)} · ${state.current.name}`;
         case "upcoming": return `Starts in ${formatRemaining(state.toNext)} · ${state.next.name}`;
         case "done": return "School day complete";
-        case "none-today": return "No classes today · PSI";
+        case "none-today": return state.schedule.closed ? "No school today · PSI" : "No classes today · PSI";
         default: return "Palumbo Student Interface";
     }
 }
 
-function setBellMode(mode) {
-    bellMode = BELL_MODES.includes(mode) ? mode : "normal";
-    data.bellMode = bellMode;
+/* Schedule tabs preview a schedule; they do not change which one is active. */
+function syncModeButtons() {
+    const view = viewSchedule(), active = activeFor(todayKey()).id;
+    document.querySelectorAll(".mode-button[data-mode]").forEach(b => {
+        b.classList.toggle("active", b.dataset.mode === view);
+        b.classList.toggle("is-today", b.dataset.mode === active);
+        b.setAttribute("aria-pressed", String(b.dataset.mode === view));
+    });
+}
+function setBellMode(id) {
+    previewSchedule = PSI_BELL.isValid(id) && id !== "none" ? id : "normal";
+    syncModeButtons();
+    renderSavedSchedule();
+    window.onBellModeChange?.();
+    window.dispatchEvent(new CustomEvent("psi:preview-changed"));
+}
+/* Make a schedule the real one for a date (a date override). `id` "" removes the override. */
+function setDateOverride(key, id) {
+    if (!PSI_BELL.isKey(key)) return false;
+    if (id) data.bell.overrides[key] = id; else delete data.bell.overrides[key];
     saveData();
-    document.querySelectorAll(".mode-button").forEach(b => b.classList.toggle("active", b.dataset.mode === bellMode));
     renderSavedSchedule();
     updateTimeRemaining();
-    window.onBellModeChange?.();
+    syncModeButtons();
+    return true;
 }
 
 function toggleSettings(selectId, boxId, inputIds) {
@@ -596,7 +651,7 @@ function renderSavedSchedule() {
         const t = timesFor(course) || { start: course.start, end: course.end };
         const row = document.createElement("div");
         row.className = "saved-class";
-        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${classMeta(course) ? `<small class="schedule-teacher">${escapeHtml(classMeta(course))}</small>` : ""}<small>${course.days.join(", ")} · ${formatStoredTime(t.start)}–${formatStoredTime(t.end)}${course.bellAffected ? " · Bell-specific" : ""}${course.dayOffAffected ? " · Day off" : ""}</small></div><button class="danger-button" type="button">Delete</button>`;
+        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${classMeta(course) ? `<small class="schedule-teacher">${escapeHtml(classMeta(course))}</small>` : ""}<small>${course.days.join(", ")} · ${formatStoredTime(t.start)}–${formatStoredTime(t.end)}${course.bellAffected ? " · Bell-specific" : ""}${course.dayOffAffected ? " · Day off" : ""}${course.period ? ` · ${escapeHtml(course.period)}` : ""}${course.rotation ? ` · ${course.rotation}-Day` : ""}</small></div><button class="danger-button" type="button">Delete</button>`;
         row.querySelector("button").addEventListener("click", () => {
             customSchedule = customSchedule.filter(c => c.id !== course.id);
             saveSchedule();
@@ -623,7 +678,7 @@ byId("schedule-form").addEventListener("submit", event => {
     if (off && (!v("dayoff-start") || !v("dayoff-end") || v("dayoff-start") >= v("dayoff-end"))) return alert("Enter valid Day Off start and end times.");
 
     customSchedule.push({
-        id: Date.now() + Math.random(), name, teacher: v("schedule-teacher").trim(), room: v("schedule-room").trim(), days, start, end,
+        id: Date.now() + Math.random(), name, teacher: v("schedule-teacher").trim(), room: v("schedule-room").trim(), period: v("schedule-period").trim(), rotation: v("schedule-rotation"), days, start, end,
         bellAffected: bell, bellStart: bell ? v("bell-start") : "", bellEnd: bell ? v("bell-end") : "",
         dayOffAffected: off, dayOffStart: off ? v("dayoff-start") : "", dayOffEnd: off ? v("dayoff-end") : ""
     });
@@ -637,10 +692,10 @@ byId("schedule-form").addEventListener("submit", event => {
 /* ---------- Today's classes + countdown ---------- */
 /* Runs once a second (the only schedule timer) and whenever the schedule or bell mode changes.
    Everything time-related on screen is derived from one getScheduleState() call per tick. */
-let scheduleListHtml = "";
+let scheduleListHtml = "", lastActiveKey = "";
 function updateTimeRemaining() {
     const state = getScheduleState();
-    byId("day-name").textContent = `Class Schedule for ${DAY_NAMES[new Date().getDay()]}`;
+    byId("day-name").textContent = `Class Schedule for ${state.weekday}`;
 
     const remainingText = c => c === state.current ? `${formatRemaining(state.left)} remaining`
         : state.now < c.start ? `${formatRemaining(c.start - state.now)} until start` : "Not in Session";
@@ -656,6 +711,8 @@ function updateTimeRemaining() {
         if (el.textContent !== text) el.textContent = text;
     });
 
+    const activeKey = `${state.schedule.id}|${state.schedule.source}`;
+    if (activeKey !== lastActiveKey) { lastActiveKey = activeKey; syncModeButtons(); }   // e.g. the date rolled over to a B day
     const timer = byId("current-class-timer");
     if (timer) timer.textContent = state.current ? `${state.current.name} — in session` : "No class in session";
     const title = scheduleTitle(state);
@@ -754,7 +811,6 @@ function loadWeather() {
 }
 
 /* ---------- Initial render ---------- */
-document.querySelectorAll(".mode-button").forEach(b => b.classList.toggle("active", b.dataset.mode === bellMode));
 byId("greeting").textContent = getDailyGreeting();
 byId("homework-due").min = getTodayDateString();
 applyGpaVisibility();
@@ -765,10 +821,11 @@ renderTasks();
 maybeAutoClearCompletedHomework();
 renderHomework();
 renderSavedSchedule();
+syncModeButtons();
 loadWeather();
 /* One once-a-second heartbeat for the clock and the schedule. It is a self-rescheduling timeout aimed at the next
    whole-second boundary (not a counter), so the display is always computed from the real time and can't drift. */
-function tick() { updateClock(); updateTimeRemaining(); }
+function tick() { updateClock(); updateTimeRemaining(); PSI_BELL.maybeRefresh(); }   // maybeRefresh is a timestamp check; it fetches only when the sheet is due
 function heartbeat() {
     tick();
     setTimeout(heartbeat, 1000 - (Date.now() % 1000) + 5);
@@ -792,6 +849,8 @@ function syncBgBeat() {
         bgBeat.onerror = stopBgBeat;
     } catch (e) { bgBeat = null; }
 }
+/* New sheet data (or a failed refresh): redraw everything that depends on the schedule. */
+window.addEventListener("psi:bell-updated", () => { renderSavedSchedule(); updateTimeRemaining(); syncModeButtons(); window.onBellModeChange?.(); });
 document.addEventListener("visibilitychange", syncBgBeat);
 if (document.hidden) syncBgBeat();
 setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);

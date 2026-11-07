@@ -813,7 +813,7 @@ function renderSideWidgets() {
 
         <button type="button" class="side-toggle" data-qa="scores">${hid ? EYE : EYE_OFF}<span>${hid ? 'Show' : 'Hide'} Academics</span></button>
 
-        <ul class="side-stats"><li><span>Classes today</span><b>${getEffectiveSchedule(WD[new Date().getDay()]).length}</b></li></ul></div>`
+        <ul class="side-stats"><li><span>Classes today</span><b>${getScheduleState().today.length}</b></li></ul></div>`
 
       + stats('Weekly Progress', [['Done this week', `${done} / ${wk.length}`], ['Open assignments', homework.filter(i => !i.done).length], ['Day streak', getDisplayStreak()]], wk.length ? Math.round(done / wk.length * 100) : 0)
 
@@ -941,6 +941,8 @@ const msw = $('.mode-switcher');
 
 if (msw && !$('[data-mode="dayoff"]', msw)) msw.insertAdjacentHTML('beforeend', '<button type="button" class="mode-button" data-mode="dayoff" onclick="setBellMode(\'dayoff\')">Day Off</button>');
 
+syncModeButtons();   // the Day Off tab was just added; mark which tab is previewed / active
+
 if (!$('#dayoff-settings')) {
 
   $('#bell-settings').insertAdjacentHTML('afterend', `
@@ -999,45 +1001,9 @@ window.clearScheduleForm = () => {
 
 };
 
-/* Bell mode + effective-schedule lookups both special-case 'dayoff' now */
-
-window.setBellMode = mode => {
-
-  bellMode = ['hour', 'dayoff'].includes(mode) ? mode : 'normal';
-
-  data.bellMode = bellMode;
-
-  saveData();
-
-  $$('.mode-button').forEach(b => b.classList.toggle('active', b.dataset.mode === bellMode));
-
-  renderSavedSchedule();
-
-  updateTimeRemaining();
-
-  if (current === 'builder') { renderSchedPreview(); renderSideWidgets(); }
-
-};
-
-window.getEffectiveSchedule = dayName => {
-
-  if (bellMode === 'dayoff') {
-
-    return customSchedule.filter(c => c.days.includes(dayName) && c.dayOffAffected)
-
-      .map(c => ({ name: c.name, teacher: c.teacher || '', room: c.room || '', startTime: c.dayOffStart, endTime: c.dayOffEnd }));
-
-  }
-
-  return customSchedule.filter(c => c.days.includes(dayName)).map(c => {
-
-    const useBell = bellMode === 'hour' && c.bellAffected;
-
-    return { name: c.name, teacher: c.teacher || '', room: c.room || '', startTime: useBell ? c.bellStart : c.start, endTime: useBell ? c.bellEnd : c.end };
-
-  });
-
-};
+/* The schedule tabs preview a schedule (script.js owns setBellMode / getEffectiveSchedule; one implementation, not two).
+   When the preview or the imported data changes, refresh the builder pieces that show it. */
+window.onBellModeChange = () => { if (current === 'builder') { renderSchedPreview(); renderSideWidgets(); } };
 
 /* Capture the Day Off fields (and validate them) before the original submit
 
@@ -1075,7 +1041,7 @@ document.addEventListener('submit', e => {
 
 /* ---------- Schedule Builder: preview, smart sidebar, conflicts, undo, templates ---------- */
 
-const SB = { view: 'week', day: WD[new Date().getDay()] };
+const SB = { view: 'week', day: PSI_BELL.schoolParts().weekday };
 
 const dayList = d => getEffectiveSchedule(d).sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));
 
@@ -1191,7 +1157,7 @@ function renderSchedPreview() {
 
 function builderSide() {
 
-  const L = dayList(SB.day), isToday = SB.day === WD[new Date().getDay()], cur = isToday ? getScheduleState().current : null;
+  const L = dayList(SB.day), isToday = SB.day === PSI_BELL.schoolParts().weekday, cur = isToday ? getScheduleState().current : null;
 
   const cls = L.filter(c => !isLunch(c)), lunch = L.filter(isLunch);
 
