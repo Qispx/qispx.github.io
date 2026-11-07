@@ -171,7 +171,13 @@
   const themeMetaDefaults = themeMetas.map(m => m.content);
   const savedTheme = () => { const t = store.get(THEME_KEY); return t === 'light' || t === 'dark' ? t : 'system'; };
 
+  let themeAnim = 0;
   function applyTheme(mode, remember) {
+    if (remember) {   // a person's click crossfades the colours once; first paint and OS changes don't animate
+      root.classList.add('theme-anim');
+      clearTimeout(themeAnim);
+      themeAnim = setTimeout(() => root.classList.remove('theme-anim'), 260);
+    }
     if (mode === 'system') delete root.dataset.theme; else root.dataset.theme = mode;
     themeButtons.forEach(b => {
       const on = b.dataset.themeMode === mode;
@@ -206,16 +212,16 @@
     const laterText = st => st.later
       ? `Next: ${st.later.offset === 1 ? 'Tomorrow' : st.later.dayName} at ${formatStoredTime(st.later.cls.startTime)} · ${st.later.cls.name}`
       : 'No classes scheduled in the next 7 days.';
-    let last = '';
+    let last = '', prevV = [];
 
     const render = st => {
       let v;   // [eyebrow, name, meta, big number, label, state class, show builder button]
       switch (st.status) {
         case 'in-class':
           v = ['Now', st.current.name, withTeacher(st.current) + (st.next ? ` · Then ${st.next.name} at ${formatStoredTime(st.next.startTime)}` : ' · Last class today'),
-               formatCountdown(st.left), 'remaining', 'is-now']; break;
+               formatRemaining(st.left), 'remaining', 'is-now']; break;
         case 'upcoming':
-          v = ['Up next', st.next.name, withTeacher(st.next), formatUntil(st.toNext), 'until start', '']; break;
+          v = ['Up next', st.next.name, withTeacher(st.next), formatRemaining(st.toNext), 'until start', '']; break;
         case 'done':
           v = ['Today', 'No more classes today', `All of today’s classes have ended. ${laterText(st)}`, '', '', 'is-idle']; break;
         case 'none-today':
@@ -224,16 +230,17 @@
           v = ['Up next', 'No schedule yet', 'Add your classes in the Schedule Builder to see what’s next.', '', '', '', true];
       }
       const key = v.join('|');
-      if (key === last) return;           // most ticks change nothing; skip the DOM work
+      if (key === last) return;           // nothing changed since the last tick
+      // While a class runs only the big number changes each second: write just the fields that differ.
+      const prev = prevV;
+      prevV = v;
       last = key;
-      part('.nc-eyebrow').textContent = v[0];
-      part('.nc-name').textContent = v[1];
-      part('.nc-meta').textContent = v[2];
-      part('.nc-count b').textContent = v[3];
-      part('.nc-count span').textContent = v[4];
-      part('.nc-count b').hidden = part('.nc-count span').hidden = !v[3];
-      part('.nc-count button').hidden = !v[6];
-      part('.nc-count').hidden = !v[3] && !v[6];
+      const put = (i, sel) => { if (prev[i] !== v[i]) part(sel).textContent = v[i]; };
+      const hide = (sel, h) => { const el = part(sel); if (el.hidden !== h) el.hidden = h; };
+      put(0, '.nc-eyebrow'); put(1, '.nc-name'); put(2, '.nc-meta'); put(3, '.nc-count b'); put(4, '.nc-count span');
+      hide('.nc-count b', !v[3]); hide('.nc-count span', !v[3]);
+      hide('.nc-count button', !v[6]);
+      hide('.nc-count', !v[3] && !v[6]);
       card.classList.toggle('is-now', v[5] === 'is-now');
       card.classList.toggle('is-idle', v[5] === 'is-idle');
     };

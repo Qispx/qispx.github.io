@@ -477,11 +477,6 @@ function formatStoredTime(value) {
 function timeToMinutes(time) { const [h, m] = time.split(":").map(Number); return h * 60 + m; }
 function timeToSeconds(time) { return timeToMinutes(time) * 60; }
 function getSecondsNow() { const n = new Date(); return n.getHours() * 3600 + n.getMinutes() * 60 + n.getSeconds(); }
-function formatCountdown(total) {
-    const s = Math.max(0, Math.round(total)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
-    return h ? `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}` : `${m}:${String(sec).padStart(2, "0")}`;
-}
-
 /* Durations. The one formatter every duration in PSI goes through.
    short: "5 min", "1 hr", "1 hr 30 min", "8 hr 20 min"   long: "1 hour 30 minutes"
    Whole minutes only (rounded to nearest); zero, negative and non-numeric input read as "0 min". */
@@ -495,6 +490,14 @@ function formatDuration(totalMinutes, style = "short") {
 }
 /* Time until a future moment, from seconds. Rounds UP to the minute so it never reads "0 min" before the event. */
 const formatUntil = (seconds, style) => formatDuration(Math.ceil(Math.max(0, seconds) / 60), style);
+/* Live countdown text, used by the tab title, the Up Next card and the schedule list so they always read the same.
+   "1:18:05" (an hour or more), "18:42" (under an hour), "45 sec" (under a minute). Whole seconds; negative reads as "0 sec". */
+function formatRemaining(seconds) {
+    const s = Math.max(0, Math.floor(Number(seconds) || 0));
+    if (s < 60) return `${s} sec`;
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), pad = n => String(n).padStart(2, "0");
+    return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
+}
 
 /* Times a class uses in the current bell mode; null if it doesn't meet in that mode (Day Off only) */
 function timesFor(c) {
@@ -543,12 +546,13 @@ function getScheduleState(date = new Date()) {
     }
     return state;
 }
-/* Browser-tab title for a schedule state, e.g. "18 min · AP Physics C | PSI" */
+/* Browser-tab title for a schedule state, e.g. "Ends in 18:42 · AP Physics C" or "Starts in 12:05 · AP English".
+   Before school and passing periods are both "upcoming": same wording, counting to the next class. */
 function scheduleTitle(state) {
     switch (state.status) {
-        case "in-class": return `Now · ${state.current.name} | PSI`;
-        case "upcoming": return `${formatUntil(state.toNext)} · ${state.next.name} | PSI`;
-        case "done": return "No more classes · PSI";
+        case "in-class": return `Ends in ${formatRemaining(state.left)} · ${state.current.name}`;
+        case "upcoming": return `Starts in ${formatRemaining(state.toNext)} · ${state.next.name}`;
+        case "done": return "School day complete";
         case "none-today": return "No classes today · PSI";
         default: return "Palumbo Student Interface";
     }
@@ -633,16 +637,19 @@ function updateTimeRemaining() {
     const state = getScheduleState();
     byId("day-name").textContent = `Class Schedule for ${DAY_NAMES[new Date().getDay()]}`;
 
+    const remainingText = c => c === state.current ? `${formatRemaining(state.left)} remaining`
+        : state.now < c.start ? `${formatRemaining(c.start - state.now)} until start` : "Not in Session";
     const html = state.today.length
-        ? state.today.map(c => {
-            const current = c === state.current;
-            const remaining = current ? `${formatCountdown(state.left)} remaining`
-                : state.now < c.start ? `${formatUntil(c.start - state.now)} until start` : "Not in Session";
-            return `<div class="schedule-item${current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${c.teacher ? `<small class="schedule-teacher">${escapeHtml(c.teacher)}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining">${remaining}</div></div>`;
-        }).join("")
+        ? state.today.map(c => `<div class="schedule-item${c === state.current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${c.teacher ? `<small class="schedule-teacher">${escapeHtml(c.teacher)}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining"></div></div>`).join("")
         : '<div class="schedule-empty">No classes scheduled for today.</div>';
-    // Only touch the DOM when the text changes (outside class time that is once a minute, not once a second).
-    if (html !== scheduleListHtml) { byId("class-list").innerHTML = html; scheduleListHtml = html; }
+    // Rebuild the rows only when their structure changes (a class starts/ends, or the schedule is edited).
+    // The countdown text changes every second, so it is written in place, and only where it differs.
+    const list = byId("class-list");
+    if (html !== scheduleListHtml) { list.innerHTML = html; scheduleListHtml = html; }
+    list.querySelectorAll(".schedule-remaining").forEach((el, i) => {
+        const text = remainingText(state.today[i]);
+        if (el.textContent !== text) el.textContent = text;
+    });
 
     const timer = byId("current-class-timer");
     if (timer) timer.textContent = state.current ? `${state.current.name} — in session` : "No class in session";
@@ -753,13 +760,17 @@ renderTasks();
 maybeAutoClearCompletedHomework();
 renderHomework();
 renderSavedSchedule();
-updateClock();
-updateTimeRemaining();
 loadWeather();
-setInterval(updateClock, 1000);
-setInterval(updateTimeRemaining, 1000);
-// Browsers throttle timers in background tabs; catch up the moment the tab is visible again.
-document.addEventListener("visibilitychange", () => { if (!document.hidden) updateTimeRemaining(); });
+/* One once-a-second heartbeat for the clock and the schedule. It is a self-rescheduling timeout aimed at the next
+   whole-second boundary (not a counter), so the display is always computed from the real time and can't drift.
+   Browsers throttle timers in background tabs; catch up the moment the tab is visible again. */
+function heartbeat() {
+    updateClock();
+    updateTimeRemaining();
+    setTimeout(heartbeat, 1000 - (Date.now() % 1000) + 5);
+}
+heartbeat();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { updateClock(); updateTimeRemaining(); } });
 setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);
 setInterval(maybeResetDailyTasks, 60 * 1000);
 setInterval(loadWeather, 30 * 60 * 1000);
