@@ -187,6 +187,7 @@ button{border-color:var(--btn);background:var(--btn);color:var(--on-btn);font-we
 .dashboard-grid:last-child{margin-bottom:0}
 @keyframes in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes out{to{opacity:0;transform:translateY(6px)}}
 
 /* Dock: primary navigation, floating material (injected by v3.js) */
 .dock{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:50;display:flex;gap:2px;padding:6px;transform:translateX(-50%);border:1px solid var(--material-border);border-radius:var(--r-pill);background:var(--material);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);box-shadow:var(--shadow-pop)}
@@ -264,8 +265,11 @@ body.searching .dropdown-section:not(.expanded) .dropdown-body,body.searching .q
 .col-track,.side-bar{height:6px}
 .workload-bar-track,.gauge-track{height:8px}
 .workload-bar-track{display:flex}
-.col-fill,.workload-bar-fill,.side-bar i,.gauge-fill{display:block;height:100%;border-radius:inherit;background:var(--accent);transition:width .3s ease}
-.workload-bar-fill{flex:0 0 auto;width:0}
+.col-fill,.workload-bar-fill,.side-bar i,.gauge-fill{display:block;height:100%;border-radius:inherit;background:var(--accent)}
+/* Single-fill bars slide a full-width fill inside the clipped track (--p is 0..1), so growing one is a compositor-only transform, not a layout. */
+.col-fill,.side-bar i,.gauge-fill{width:100%;transform:translateX(calc(var(--p,0) * 100% - 100%));transition:transform .3s var(--ease)}
+/* The workload bar is two segments sharing one flex row, so they keep animating width. */
+.workload-bar-fill{flex:0 0 auto;width:0;transition:width .3s ease}
 .workload-bar-fill.is-complete{background:var(--ok)}
 .workload-bar-overdue{flex:0 0 auto;width:0;height:100%;background:var(--err);transition:width .3s ease}
 .side-bar{margin:var(--s2) 12px 0;height:5px}
@@ -274,7 +278,6 @@ body.searching .dropdown-section:not(.expanded) .dropdown-body,body.searching .q
 .pct{color:var(--text)}
 .wc.over{color:var(--err-ink)}
 .gauge{margin:var(--s2) 0 var(--s4)}
-.gauge-fill{width:0}
 .gauge-scale{display:flex;justify-content:space-between;margin-top:6px;color:var(--text-3);font-size:var(--fs-xs)}
 
 /* Empty states say what the person is looking at; dashed outline where a list would be */
@@ -605,6 +608,8 @@ body.searching .dropdown-section:not(.expanded) .dropdown-body,body.searching .q
 .psi-dialog::backdrop{background:var(--scrim);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 .psi-dialog[open]{animation:in .2s ease}
 .psi-dialog[open]::backdrop{animation:fade .2s ease}
+.psi-dialog.is-closing{animation:out .15s ease forwards;pointer-events:none}
+.psi-dialog.is-closing::backdrop{animation:fade .15s ease reverse forwards}
 .dlg-body{padding:var(--s6)}
 .psi-dialog h2{margin-bottom:var(--s2);font-size:var(--fs-xl);overflow-wrap:anywhere}
 .psi-dialog p{color:var(--text-2)}

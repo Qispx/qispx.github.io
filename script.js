@@ -33,7 +33,7 @@ function loadData() {
     return {
         classes: arr(s.classes),
         tasks: arr(s.tasks),
-        schedule: arr(s.schedule).map(c => ({ ...c, teacher: String(c.teacher ?? "").trim() })),
+        schedule: arr(s.schedule).map(c => ({ ...c, teacher: String(c.teacher ?? "").trim(), room: String(c.room ?? "").trim() })),
         homework: arr(s.homework).map(h => ({
             ...h,
             density: DENSITIES.includes(h.density) ? h.density : "moderate",
@@ -499,6 +499,11 @@ function formatRemaining(seconds) {
     return h ? `${h}:${pad(m)}:${pad(s % 60)}` : `${m}:${pad(s % 60)}`;
 }
 
+/* "Ms. Rivera · Room 214": the optional teacher and room of a class, as shown under its name. A bare number or short code
+   reads as "Room 214"; anything else the person typed ("Gym", "Lab B") is shown as written. Empty when neither is set. */
+const roomLabel = room => { room = String(room || "").trim(); return !room ? "" : /^[A-Za-z]?\d[\w-]{0,5}$/.test(room) ? `Room ${room}` : room; };
+const classMeta = c => [c.teacher, roomLabel(c.room)].filter(Boolean).join(" · ");
+
 /* Times a class uses in the current bell mode; null if it doesn't meet in that mode (Day Off only) */
 function timesFor(c) {
     if (bellMode === "dayoff") return c.dayOffAffected ? { start: c.dayOffStart, end: c.dayOffEnd } : null;
@@ -508,7 +513,7 @@ function timesFor(c) {
 function getEffectiveSchedule(dayName) {
     return customSchedule.filter(c => c.days.includes(dayName)).map(c => {
         const t = timesFor(c);
-        return t && { name: c.name, teacher: c.teacher || "", startTime: t.start, endTime: t.end };
+        return t && { name: c.name, teacher: c.teacher || "", room: c.room || "", startTime: t.start, endTime: t.end };
     }).filter(Boolean);
 }
 
@@ -591,7 +596,7 @@ function renderSavedSchedule() {
         const t = timesFor(course) || { start: course.start, end: course.end };
         const row = document.createElement("div");
         row.className = "saved-class";
-        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${course.teacher ? `<small class="schedule-teacher">${escapeHtml(course.teacher)}</small>` : ""}<small>${course.days.join(", ")} · ${formatStoredTime(t.start)}–${formatStoredTime(t.end)}${course.bellAffected ? " · Bell-specific" : ""}${course.dayOffAffected ? " · Day off" : ""}</small></div><button class="danger-button" type="button">Delete</button>`;
+        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${classMeta(course) ? `<small class="schedule-teacher">${escapeHtml(classMeta(course))}</small>` : ""}<small>${course.days.join(", ")} · ${formatStoredTime(t.start)}–${formatStoredTime(t.end)}${course.bellAffected ? " · Bell-specific" : ""}${course.dayOffAffected ? " · Day off" : ""}</small></div><button class="danger-button" type="button">Delete</button>`;
         row.querySelector("button").addEventListener("click", () => {
             customSchedule = customSchedule.filter(c => c.id !== course.id);
             saveSchedule();
@@ -618,7 +623,7 @@ byId("schedule-form").addEventListener("submit", event => {
     if (off && (!v("dayoff-start") || !v("dayoff-end") || v("dayoff-start") >= v("dayoff-end"))) return alert("Enter valid Day Off start and end times.");
 
     customSchedule.push({
-        id: Date.now() + Math.random(), name, teacher: v("schedule-teacher").trim(), days, start, end,
+        id: Date.now() + Math.random(), name, teacher: v("schedule-teacher").trim(), room: v("schedule-room").trim(), days, start, end,
         bellAffected: bell, bellStart: bell ? v("bell-start") : "", bellEnd: bell ? v("bell-end") : "",
         dayOffAffected: off, dayOffStart: off ? v("dayoff-start") : "", dayOffEnd: off ? v("dayoff-end") : ""
     });
@@ -640,7 +645,7 @@ function updateTimeRemaining() {
     const remainingText = c => c === state.current ? `${formatRemaining(state.left)} remaining`
         : state.now < c.start ? `${formatRemaining(c.start - state.now)} until start` : "Not in Session";
     const html = state.today.length
-        ? state.today.map(c => `<div class="schedule-item${c === state.current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${c.teacher ? `<small class="schedule-teacher">${escapeHtml(c.teacher)}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining"></div></div>`).join("")
+        ? state.today.map(c => `<div class="schedule-item${c === state.current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${classMeta(c) ? `<small class="schedule-teacher">${escapeHtml(classMeta(c))}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining"></div></div>`).join("")
         : '<div class="schedule-empty">No classes scheduled for today.</div>';
     // Rebuild the rows only when their structure changes (a class starts/ends, or the schedule is edited).
     // The countdown text changes every second, so it is written in place, and only where it differs.
@@ -762,15 +767,33 @@ renderHomework();
 renderSavedSchedule();
 loadWeather();
 /* One once-a-second heartbeat for the clock and the schedule. It is a self-rescheduling timeout aimed at the next
-   whole-second boundary (not a counter), so the display is always computed from the real time and can't drift.
-   Browsers throttle timers in background tabs; catch up the moment the tab is visible again. */
+   whole-second boundary (not a counter), so the display is always computed from the real time and can't drift. */
+function tick() { updateClock(); updateTimeRemaining(); }
 function heartbeat() {
-    updateClock();
-    updateTimeRemaining();
+    tick();
     setTimeout(heartbeat, 1000 - (Date.now() % 1000) + 5);
 }
 heartbeat();
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { updateClock(); updateTimeRemaining(); } });
+/* Browsers slow page timers in background tabs (Chrome: to about once a minute after five minutes hidden), which would
+   freeze the seconds in the tab title exactly when it is the thing being looked at. Timers inside a dedicated worker are
+   not slowed that way, so while the tab is hidden a tiny worker also calls tick(). It is created only when the tab is
+   hidden and ended the moment it is visible again; tick() only writes what changed, so the two sources never conflict.
+   If workers are unavailable the page simply falls back to the throttled timer. */
+let bgBeat = null;
+function stopBgBeat() { if (bgBeat) { bgBeat.terminate(); bgBeat = null; } }
+function syncBgBeat() {
+    if (!document.hidden) { stopBgBeat(); tick(); return; }
+    if (bgBeat) return;
+    try {
+        const src = URL.createObjectURL(new Blob(["const t=()=>{postMessage(0);setTimeout(t,1000-Date.now()%1000+5)};t()"], { type: "text/javascript" }));
+        bgBeat = new Worker(src);
+        URL.revokeObjectURL(src);
+        bgBeat.onmessage = tick;
+        bgBeat.onerror = stopBgBeat;
+    } catch (e) { bgBeat = null; }
+}
+document.addEventListener("visibilitychange", syncBgBeat);
+if (document.hidden) syncBgBeat();
 setInterval(maybeAutoClearCompletedHomework, 5 * 60 * 1000);
 setInterval(maybeResetDailyTasks, 60 * 1000);
 setInterval(loadWeather, 30 * 60 * 1000);

@@ -40,7 +40,14 @@
           <button type="button" class="${destructive ? 'dlg-danger' : ''}" data-r="ok">${esc(confirm)}</button>
         </div></div>`;
       let result = { ok: false, value: '' };
-      const done = ok => { result = { ok, value: $('#psi-dlg-input', dlg)?.value ?? '' }; dlg.close(); };
+      const done = ok => {
+        // Fade out first (CSS .is-closing), then close. Skipped under reduced motion; a second click while fading is ignored.
+        if (dlg.classList.contains('is-closing')) return;
+        result = { ok, value: $('#psi-dlg-input', dlg)?.value ?? '' };
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return dlg.close();
+        dlg.classList.add('is-closing');
+        setTimeout(() => { dlg.classList.remove('is-closing'); dlg.close(); }, 150);
+      };
       dlg.onclick = e => {
         const b = e.target.closest('[data-r]');
         if (b) done(b.dataset.r === 'ok');
@@ -172,7 +179,7 @@
       const has = Number.isFinite(v) && v >= g.min && v > 0;
       const pct = has ? Math.max(0, Math.min(100, (v - g.min) / (g.max - g.min) * 100)) : 0;
       nodes.forEach(n => {
-        $('.gauge-fill', n).style.width = `${pct}%`;
+        $('.gauge-fill', n).style.setProperty('--p', pct / 100);
         n.setAttribute('aria-valuenow', has ? v : g.min);
         n.setAttribute('aria-valuetext', has ? `${g.fmt(v)} on a scale from ${g.scale[0]} to ${g.scale[1]}` : g.empty);
       });

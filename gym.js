@@ -173,7 +173,7 @@ function renderWeek() {
     <div class="gym-days">${dots}</div>
     <div class="gym-goal"><span>${n} of ${goal} workouts</span>
       <div class="stepper"><button type="button" class="step" data-g="goal" data-d="-1" aria-label="Lower weekly goal">&minus;</button><input type="number" value="${goal}" min="1" max="7" data-g-input="goal" aria-label="Workouts per week"><button type="button" class="step" data-g="goal" data-d="1" aria-label="Raise weekly goal">+</button></div></div>
-    <div class="col-track"><div class="col-fill" style="width:${pct}%"></div></div>
+    <div class="col-track"><div class="col-fill" style="--p:${pct / 100}"></div></div>
     <p class="gym-sub">Last 8 weeks</p>
     <svg class="gym-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Workouts per week, last 8 weeks"><line x1="0" x2="${W}" y1="${gy}" y2="${gy}" stroke="var(--border-strong)" stroke-dasharray="4 4"/>${bars}</svg>`;
 }
@@ -227,7 +227,7 @@ function renderWeight() {
     const pct = span === 0
       ? (last.v === gw ? 100 : 0)
       : Math.max(0, Math.min(100, Math.round((last.v - first.v) / span * 100)));
-    prog = `<div class="col-track"><div class="col-fill" style="width:${pct}%"></div></div><div class="pct" style="font-weight:800;margin:8px 0 var(--space-4)">${pct}% of the way from ${first.v} to ${gw} ${u}</div>`;
+    prog = `<div class="col-track"><div class="col-fill" style="--p:${pct / 100}"></div></div><div class="pct" style="font-weight:800;margin:8px 0 var(--space-4)">${pct}% of the way from ${first.v} to ${gw} ${u}</div>`;
   } else prog = '<p class="gym-sub" style="margin:0 0 var(--space-4)">Set a goal weight to see a progress bar.</p>';
   const fmt = n => (n > 0 ? '+' : '') + n.toFixed(1);
   el.innerHTML = `<div class="panel-heading"><div class="panel-heading-main"><h2>Weight Tracking</h2></div></div>
@@ -377,7 +377,7 @@ window.gymSide = () => {
   const did = G.log.some(l => l.date === today());
   const rows = [['This week', `${n} / ${goal}`], ['Day streak', streak()], ['Total workouts', G.log.length], ['Weight', last ? `${last.v} ${G.unit}` : '\u2014']];
   return `<div class="side-section"><p class="sidebar-nav-label">${did ? 'Tomorrow' : 'Up Next'}</p><p class="side-note strong">${nx ? esc(nx.name) : 'No workouts yet'}</p></div>
-    <div class="side-section"><p class="sidebar-nav-label">Gym Stats</p><ul class="side-stats">${rows.map(([l, v]) => `<li><span>${l}</span><b>${v}</b></li>`).join('')}</ul><div class="side-bar"><i style="width:${Math.min(100, Math.round(n / goal * 100))}%"></i></div></div>`;
+    <div class="side-section"><p class="sidebar-nav-label">Gym Stats</p><ul class="side-stats">${rows.map(([l, v]) => `<li><span>${l}</span><b>${v}</b></li>`).join('')}</ul><div class="side-bar"><i style="--p:${Math.min(100, Math.round(n / goal * 100)) / 100}"></i></div></div>`;
 };
 
 build();

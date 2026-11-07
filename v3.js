@@ -499,7 +499,7 @@ function progressHtml(c) {
 
   const L = checklist(c), p = Math.round(L.filter(x => x[1]).length / L.length * 100);
 
-  return `<div class="col-track"><div class="col-fill" style="width:${p}%"></div></div><div class="pct">${p}% complete</div><ul class="checks">${L.map(([t, ok]) => `<li class="ck${ok ? ' done' : ''}">${t}</li>`).join('')}</ul>`;
+  return `<div class="col-track"><div class="col-fill" style="--p:${p / 100}"></div></div><div class="pct">${p}% complete</div><ul class="checks">${L.map(([t, ok]) => `<li class="ck${ok ? ' done' : ''}">${t}</li>`).join('')}</ul>`;
 
 }
 
@@ -771,7 +771,7 @@ sw.id = 'side-widgets';
 
 navUl.after(sw);
 
-const stats = (title, rows, pct) => `<div class="side-section"><p class="sidebar-nav-label">${title}</p><ul class="side-stats">${rows.map(([l, v, c]) => `<li><span>${l}</span><b${c ? ` class="${c}"` : ''}>${v}</b></li>`).join('')}</ul>${pct == null ? '' : `<div class="side-bar"><i style="width:${pct}%"></i></div>`}</div>`;
+const stats = (title, rows, pct) => `<div class="side-section"><p class="sidebar-nav-label">${title}</p><ul class="side-stats">${rows.map(([l, v, c]) => `<li><span>${l}</span><b${c ? ` class="${c}"` : ''}>${v}</b></li>`).join('')}</ul>${pct == null ? '' : `<div class="side-bar"><i style="--p:${pct / 100}"></i></div>`}</div>`;
 
 const actions = rows => `<div class="side-section"><p class="sidebar-nav-label">Quick Actions</p><ul>${rows.map(([l, qa]) => `<li><a href="#" data-qa="${qa}">${l}</a></li>`).join('')}</ul></div>`;
 
@@ -1025,7 +1025,7 @@ window.getEffectiveSchedule = dayName => {
 
     return customSchedule.filter(c => c.days.includes(dayName) && c.dayOffAffected)
 
-      .map(c => ({ name: c.name, teacher: c.teacher || '', startTime: c.dayOffStart, endTime: c.dayOffEnd }));
+      .map(c => ({ name: c.name, teacher: c.teacher || '', room: c.room || '', startTime: c.dayOffStart, endTime: c.dayOffEnd }));
 
   }
 
@@ -1033,7 +1033,7 @@ window.getEffectiveSchedule = dayName => {
 
     const useBell = bellMode === 'hour' && c.bellAffected;
 
-    return { name: c.name, teacher: c.teacher || '', startTime: useBell ? c.bellStart : c.start, endTime: useBell ? c.bellEnd : c.end };
+    return { name: c.name, teacher: c.teacher || '', room: c.room || '', startTime: useBell ? c.bellStart : c.start, endTime: useBell ? c.bellEnd : c.end };
 
   });
 

@@ -208,7 +208,7 @@
     hero.after(card);
     const part = sel => $(sel, card);
     const span = c => `${formatStoredTime(c.startTime)}–${formatStoredTime(c.endTime)}`;
-    const withTeacher = c => span(c) + (c.teacher ? ` · ${c.teacher}` : '');
+    const withTeacher = c => span(c) + (classMeta(c) ? ` · ${classMeta(c)}` : '');
     const laterText = st => st.later
       ? `Next: ${st.later.offset === 1 ? 'Tomorrow' : st.later.dayName} at ${formatStoredTime(st.later.cls.startTime)} · ${st.later.cls.name}`
       : 'No classes scheduled in the next 7 days.';
