@@ -552,8 +552,8 @@ function dayModel(dayName, id, letter) {
     const cls = customSchedule.filter(c => Array.isArray(c.days) && c.days.includes(dayName) && rotationOk(c, letter));
     const mk = (c, start, end, extra) => ({ id: c.id, name: c.name, teacher: c.teacher || "", room: c.room || "", startTime: start, endTime: end, start: toSec(start), end: toSec(end), ...extra });
     const ok = e => Number.isFinite(e.start) && Number.isFinite(e.end) && e.end > e.start;
-    const own = c => mk(c, c.start, c.end);
-    const edge = pid => cls.filter(c => c.periodId === pid).map(own).filter(ok).sort((a, b) => a.start - b.start || a.end - b.end);
+    const own = c => { const x = timesFor(c, id); return x && mk(c, x.start, x.end); };   // Before/After School and unplaced classes use their own times for the schedule (Day Off times on a Day Off view)
+    const edge = pid => cls.filter(c => c.periodId === pid).map(own).filter(Boolean).filter(ok).sort((a, b) => a.start - b.start || a.end - b.end);
     const groups = [], before = edge("before"), after = edge("after");
     if (before.length) groups.push({ id: "before", label: "Before School", items: before, timed: true });
 
@@ -576,7 +576,7 @@ function dayModel(dayName, id, letter) {
         const x = timesFor(c, id), e = x && mk(c, x.start, x.end);
         if (e && ok(e)) groups.push({ id: `legacy:${c.id}`, label: "", items: [e], timed: true });
     }
-    const loose = cls.filter(c => c.periodId === "" && !c.kind).map(own).filter(ok);
+    const loose = cls.filter(c => c.periodId === "" && !c.kind).map(own).filter(Boolean).filter(ok);
     if (loose.length) groups.push({ id: "unassigned", label: "Unassigned", items: loose, timed: false });
     if (after.length) groups.push({ id: "after", label: "After School", items: after, timed: true });
 
@@ -692,7 +692,8 @@ function scheduleTitle(state) {
 
 /* Schedule tabs preview a schedule; they do not change which one is active. */
 function syncModeButtons() {
-    const view = viewSchedule(), active = activeFor(todayKey()).id;
+    const tabOf = id => PSI_BELL.tabFor(id), r = activeFor(todayKey());
+    const view = tabOf(viewSchedule()), active = r.id ? tabOf(r.id) : r.closed ? "dayoff" : null;
     document.querySelectorAll(".mode-button[data-mode]").forEach(b => {
         b.classList.toggle("active", b.dataset.mode === view);
         b.classList.toggle("is-today", b.dataset.mode === active);
@@ -736,10 +737,14 @@ const periodOptions = (selected, blank) => `${blank ? `<option value=""${selecte
 function syncPeriodForm() {
     const sel = byId("schedule-period"); if (!sel) return;
     const edge = sel.value === "before" || sel.value === "after";
-    for (const id of ["schedule-start", "schedule-end", "bell-affected", "dayoff-affected"]) { const el = byId(id); if (el) el.closest("label").hidden = !edge; }
-    for (const id of ["bell-settings", "dayoff-settings"]) { const el = byId(id); if (el) el.hidden = !edge; }
+    /* Day Off times apply to any period (a Day Off day has its own times); the other time controls only to Before / After School */
+    for (const id of ["schedule-start", "schedule-end", "bell-affected"]) { const el = byId(id); if (el) el.closest("label").hidden = !edge; }
+    const chosen = !!sel.value, dof = byId("dayoff-affected");
+    if (dof) dof.closest("label").hidden = !chosen;
+    if (byId("bell-settings")) byId("bell-settings").hidden = !edge;
+    if (byId("dayoff-settings")) byId("dayoff-settings").hidden = !chosen;
     byId("schedule-start").required = byId("schedule-end").required = edge;
-    if (!edge) { byId("bell-affected").value = "no"; if (byId("dayoff-affected")) byId("dayoff-affected").value = "no"; }
+    if (!edge) byId("bell-affected").value = "no";
 }
 byId("schedule-period")?.addEventListener("change", syncPeriodForm);
 syncPeriodForm(); window.addEventListener("load", syncPeriodForm);   // v3.js adds the Day Off controls after this file runs
@@ -789,7 +794,7 @@ byId("schedule-form").addEventListener("submit", event => {
     // A regular period's times come from the bell schedule; the stored copy is only a fallback for when no sheet has loaded
     const off0 = PSI_BELL.timing("normal")?.byPeriod[pid];
     const start = edge ? v("schedule-start") : off0?.start || "", end = edge ? v("schedule-end") : off0?.end || "";
-    const bell = edge && v("bell-affected") === "yes", off = edge && v("dayoff-affected") === "yes";
+    const bell = edge && v("bell-affected") === "yes", off = v("dayoff-affected") === "yes";
 
     if (!days.length) return alert("Select at least one day.");
     if (!name) return alert("Enter a class name.");

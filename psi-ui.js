@@ -255,8 +255,8 @@
   {
     const B = window.PSI_BELL, esc = escapeHtml;
     const stamp = ms => ms ? new Date(ms).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'never';
-    const opts = (sel, extra = '') => `${extra}<optgroup label="Your classes">${Object.entries(B.BUILTIN).map(([k, v]) => `<option value="${k}"${sel === k ? ' selected' : ''}>${v}</option>`).join('')}</optgroup>` +
-      (B.schedules.length ? `<optgroup label="Official sheet">${B.schedules.map(s => `<option value="${esc(s.id)}"${sel === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</optgroup>` : '');
+    const opts = (sel, extra = '') => `${extra}<optgroup label="Schedules">${Object.entries(B.BUILTIN).map(([k, v]) => `<option value="${k}"${sel === k ? ' selected' : ''}>${v}</option>`).join('')}</optgroup>` +
+      (B.schedules.some(s => !B.tabFor(s.id)) ? `<optgroup label="Official sheet">${B.schedules.filter(s => !B.tabFor(s.id)).map(s => `<option value="${esc(s.id)}"${sel === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</optgroup>` : '');
     const fmt12 = hm => { const [h, m] = hm.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; };
     const letterName = l => l ? `${l}-Day` : '';
 
@@ -270,11 +270,12 @@
     const renderStatus = () => {
       const more = $('#bell-more'); if (!more) return;
       const a = activeFor(todayKey()), view = viewSchedule();
-      const key = [a.id, view, B.schedules.map(s => s.id).join(',')].join('|');
+      const rest = B.schedules.filter(s => !B.tabFor(s.id));   // Normal Day, 1 Hour and No School/Day Off are the three tabs
+      const key = [a.id, view, rest.map(s => s.id).join(',')].join('|');
       if (key === lastStatus) return; lastStatus = key;
-      more.hidden = !B.schedules.length;
-      more.innerHTML = '<option value="">More schedules…</option>' + B.schedules.map(s => `<option value="${esc(s.id)}"${view === s.id ? ' selected' : ''}>${esc(s.name)}${a.id === s.id ? ' · today' : ''}</option>`).join('');
-      more.classList.toggle('active', B.isValid(view) && !(view in B.BUILTIN));
+      more.hidden = !rest.length;
+      more.innerHTML = '<option value="">More schedules…</option>' + rest.map(s => `<option value="${esc(s.id)}"${view === s.id ? ' selected' : ''}>${esc(s.name)}${a.id === s.id ? ' · today' : ''}</option>`).join('');
+      more.classList.toggle('active', B.isValid(view) && !B.tabFor(view));
     };
     window.addEventListener('psi:schedule-tick', renderStatus);
     window.addEventListener('psi:preview-changed', renderStatus);

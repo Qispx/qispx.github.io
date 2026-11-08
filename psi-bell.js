@@ -219,7 +219,9 @@
   const periodsOf = id => byId(id)?.periods || null;
 
   /* Built-in schedule ids that have an official counterpart in the sheet: viewing "Normal Bell Page" shows the real Normal Day times */
-  const ALIAS = { normal: /^normal/i, hour: /(^|\W)1[\s-]*hour/i, dayoff: /day[\s-]*off/i };
+  const ALIAS = { normal: /^(normal|regular)/i, hour: /(^|\W)1[\s-]*hour/i, dayoff: /day[\s-]*off|no[\s-]*school/i };
+  /* The tab a schedule belongs to: Regular = Normal Day, 1 Hour Bell = the sheet's 1 Hour schedule, Day Off = No School / Day Off. null: no tab */
+  const tabFor = id => id in BUILTIN ? id : Object.keys(ALIAS).find(k => ALIAS[k].test(byId(id)?.name || "")) || null;
   const sourceFor = id => byId(id) || (ALIAS[id] ? bell.schedules.find(s => s.periods.length && ALIAS[id].test(s.name)) || null : null);
   let timingMemo = new Map(), timingSig = "";
   /* Where each fixed period falls in a schedule, from the sheet: { byPeriod: { p3: { start, end, name } }, unmapped: [names], assumed, source }.
@@ -256,7 +258,7 @@
     url: URL_SOURCE, tz: TZ, BUILTIN, WEEK,
     get schedules() { return bell.schedules; }, get weeklySchedule() { return bell.weeklySchedule; }, get status() { return bell.status; }, get warnings() { return bell.warnings; }, get rows() { return bell.rows; },
     schoolParts, addDays, weekdayOf, isKey,
-    PERIODS, isPeriod, periodLabel, periodIdFromName, timing, slug,
+    tabFor, PERIODS, isPeriod, periodLabel, periodIdFromName, timing, slug,
     parseSchedules, normalizeConfig,
     rotationFor, resolve, nameOf, periodsOf, schedule: byId, isValid: valid,
     refresh, maybeRefresh,
