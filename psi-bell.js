@@ -46,7 +46,7 @@
   const PERIODS = [
     { id: "before", label: "Before School" }, { id: "advisory", label: "Advisory" },
     ...[1, 2, 3, 4, 5, 6, 7].map(n => ({ id: `p${n}`, label: `${n}${["st", "nd", "rd"][n - 1] || "th"} Period` })),
-    { id: "after", label: "After School" }
+    { id: "after", label: "After School" }, { id: "dayoff", label: "Day Off" }
   ];
   const PERIOD_IDS = PERIODS.map(p => p.id), isPeriod = id => PERIOD_IDS.includes(id);
   const periodLabel = id => PERIODS.find(p => p.id === id)?.label || "";
@@ -204,7 +204,7 @@
     const done = (id, source, extra = {}) => {
       const sch = byId(id);
       const closed = id === "none" || (sch && !sch.periods.length) || !!extra.closed;
-      return { id: closed ? null : id, source, letter: rot.letter, closed, label: extra.label || (id === "none" ? "No school" : ""), ...(closed && !extra.label && sch ? { label: sch.name } : {}) };
+      return { id: closed ? null : id, sched: id, source, letter: rot.letter, closed, label: extra.label || (id === "none" ? "No school" : ""), ...(closed && !extra.label && sch ? { label: sch.name } : {}) };
     };
     const ov = c.overrides[key];
     if (ov && valid(ov)) return done(ov, "override");

@@ -943,101 +943,9 @@ if (msw && !$('[data-mode="dayoff"]', msw)) msw.insertAdjacentHTML('beforeend', 
 
 syncModeButtons();   // the Day Off tab was just added; mark which tab is previewed / active
 
-if (!$('#dayoff-settings')) {
-
-  $('#bell-settings').insertAdjacentHTML('afterend', `
-
-    <label class="editor-full">
-
-      <span>Affected by Day Off Schedule</span>
-
-      <select id="dayoff-affected" onchange="toggleDayOffSettings()">
-
-        <option value="no">No, regular schedule</option>
-
-        <option value="yes">Yes, only meets on a Day Off</option>
-
-      </select>
-
-    </label>
-
-    <div class="bell-settings" id="dayoff-settings">
-
-      <label>Day Off Start Time<input type="time" id="dayoff-start"></label>
-
-      <label>Day Off End Time<input type="time" id="dayoff-end"></label>
-
-      <p class="bell-note">Classes not marked here won't appear when Day Off is selected.</p>
-
-    </div>`);
-
-}
-
-window.toggleDayOffSettings = () => {
-
-  const visible = $('#dayoff-affected').value === 'yes';
-
-  $('#dayoff-settings').classList.toggle('visible', visible);
-
-  $('#dayoff-start').required = visible;
-
-  $('#dayoff-end').required = visible;
-
-};
-
-const _clearSched = window.clearScheduleForm;
-
-window.clearScheduleForm = () => {
-
-  _clearSched();
-
-  $('#dayoff-affected').value = 'no';
-
-  $('#dayoff-settings').classList.remove('visible');
-
-  $('#dayoff-start').required = false;
-
-  $('#dayoff-end').required = false;
-
-};
-
 /* The schedule tabs preview a schedule (script.js owns setBellMode / getEffectiveSchedule; one implementation, not two).
    When the preview or the imported data changes, refresh the builder pieces that show it. */
 window.onBellModeChange = () => { if (current === 'builder') { renderSchedPreview(); renderSideWidgets(); } };
-
-/* Capture the Day Off fields (and validate them) before the original submit
-
-   handler resets the form — a capture-phase listener on document always runs
-
-   before a plain listener on the form itself. */
-
-let pendingDayOff = null, prevSchedLen = customSchedule.length;
-
-document.addEventListener('submit', e => {
-
-  if (e.target.id !== 'schedule-form') return;
-
-  const wants = $('#dayoff-affected').value === 'yes';
-
-  const s = $('#dayoff-start').value, en = $('#dayoff-end').value;
-
-  if (wants && (!s || !en || s >= en)) {
-
-    e.preventDefault(); e.stopImmediatePropagation();
-
-    alert('Enter valid Day Off start and end times.');
-
-    pendingDayOff = null;
-
-    return;
-
-  }
-
-  pendingDayOff = wants ? { start: s, end: en } : null;
-
-  prevSchedLen = customSchedule.length;
-
-}, true);
 
 /* ---------- Schedule Builder: preview, smart sidebar, conflicts, undo, templates ---------- */
 
@@ -1084,18 +992,6 @@ let hist = [], snap = JSON.stringify(customSchedule), restoring = false;
 const _rs = window.renderSavedSchedule;
 
 window.renderSavedSchedule = () => {
-
-  if (pendingDayOff && customSchedule.length === prevSchedLen + 1) {
-
-    const c = customSchedule[customSchedule.length - 1];
-
-    c.dayOffAffected = true; c.dayOffStart = pendingDayOff.start; c.dayOffEnd = pendingDayOff.end;
-
-    data.schedule = customSchedule; saveData();
-
-  }
-
-  pendingDayOff = null;
 
   _rs();
 
