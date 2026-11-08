@@ -40,6 +40,31 @@
   const weekdayOf = key => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date(utc(key)).getUTCDay()];
   const isKey = s => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && keyOf(utc(s)) === s;
 
+  /* ---------- The fixed periods ----------
+     Periods are the school day's structure: WHEN things happen. The classes a person adds say WHAT happens in them.
+     Before School and After School have no official time; whatever is assigned to them keeps its own times. */
+  const PERIODS = [
+    { id: "before", label: "Before School" }, { id: "advisory", label: "Advisory" },
+    ...[1, 2, 3, 4, 5, 6, 7].map(n => ({ id: `p${n}`, label: `${n}${["st", "nd", "rd"][n - 1] || "th"} Period` })),
+    { id: "after", label: "After School" }
+  ];
+  const PERIOD_IDS = PERIODS.map(p => p.id), isPeriod = id => PERIOD_IDS.includes(id);
+  const periodLabel = id => PERIODS.find(p => p.id === id)?.label || "";
+  const ORDINALS = { first: 1, second: 2, third: 3, fourth: 4, fifth: 5, sixth: 6, seventh: 7 };
+  /* "Period 3", "3rd Period", "Pd 3", "Block 3", "P3", "3", "Third period", "Advisory", "Homeroom": the period id, or null.
+     Anything else ("Lunch", "Block 4A", "Assembly") is not guessed at. */
+  function periodIdFromName(name) {
+    const t = String(name || "").toLowerCase().trim();
+    if (!t) return null;
+    if (/^(advisory|advisor|homeroom|adv|home room)\b/.test(t)) return "advisory";
+    if (/^before[\s-]*school/.test(t)) return "before";
+    if (/^after[\s-]*school/.test(t)) return "after";
+    let m = t.match(/^(?:period|per|pd|p|block|class)?[\s.#-]*([1-7])(?:st|nd|rd|th)?(?:[\s.-]*(?:period|per|pd|block|class))?$/);
+    if (m) return `p${m[1]}`;
+    m = t.match(/^(first|second|third|fourth|fifth|sixth|seventh)(?:[\s-]+(?:period|block|class))?$/);
+    return m ? `p${ORDINALS[m[1]]}` : null;
+  }
+
   /* ---------- Reading the sheet ---------- */
   const slug = s => String(s).toLowerCase().replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
   const hm = n => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
@@ -130,7 +155,8 @@
         closed: (Array.isArray(r.closed) ? r.closed : []).filter(x => x && isKey(x.start) && isKey(x.end) && x.start <= x.end).map(x => ({ start: x.start, end: x.end, label: String(x.label ?? "").slice(0, 60) })),
         dates
       },
-      overrides
+      overrides,
+      periodMap: Object.fromEntries(Object.entries(c.periodMap && typeof c.periodMap === "object" ? c.periodMap : {}).filter(([k, v]) => k && (v === "" || PERIODS.some(p => p.id === v))))
     };
   }
   const cfg = () => bell.cfgGet() || normalizeConfig(null);
@@ -192,10 +218,45 @@
   /* Imported period list for an id, or null for the built-in (class-based) schedules */
   const periodsOf = id => byId(id)?.periods || null;
 
+  /* Built-in schedule ids that have an official counterpart in the sheet: viewing "Normal Bell Page" shows the real Normal Day times */
+  const ALIAS = { normal: /^normal/i, hour: /(^|\W)1[\s-]*hour/i, dayoff: /day[\s-]*off/i };
+  const sourceFor = id => byId(id) || (ALIAS[id] ? bell.schedules.find(s => s.periods.length && ALIAS[id].test(s.name)) || null : null);
+  let timingMemo = new Map(), timingSig = "";
+  /* Where each fixed period falls in a schedule, from the sheet: { byPeriod: { p3: { start, end, name } }, unmapped: [names], assumed, source }.
+     Mapping is by period NAME (plus the person's own corrections, cfg.periodMap). Only if no name at all could be read, a sheet with exactly
+     7 or 8 periods is taken in order (8 = Advisory + 1st..7th) and marked `assumed` so the settings can show and fix it.
+     null when the schedule has no usable official timing: the person's own class times are used instead. */
+  function timing(id) {
+    const sig = `${version}|${JSON.stringify(cfg().periodMap)}`;
+    if (sig !== timingSig) { timingMemo = new Map(); timingSig = sig; }
+    if (timingMemo.has(id)) return timingMemo.get(id);
+    const pm = cfg().periodMap;
+    const raw = src => {
+      if (!src || !src.periods.length) return null;
+      const by = {}, extras = []; let assumed = false;
+      const place = (p, pid) => { if (pid && !by[pid]) by[pid] = { start: p.start, end: p.end, name: p.name }; else extras.push({ name: p.name, start: p.start, end: p.end }); };
+      const own = src.periods.map(p => { const k = slug(p.name); return k in pm ? pm[k] || null : periodIdFromName(p.name); });
+      if (own.some(Boolean) || Object.keys(pm).length) src.periods.forEach((p, i) => place(p, own[i]));
+      else if (src.periods.length === 8 || src.periods.length === 7) {
+        assumed = true;
+        const ids = src.periods.length === 8 ? ["advisory", "p1", "p2", "p3", "p4", "p5", "p6", "p7"] : ["p1", "p2", "p3", "p4", "p5", "p6", "p7"];
+        src.periods.forEach((p, i) => place(p, ids[i]));
+      } else src.periods.forEach(p => extras.push({ name: p.name, start: p.start, end: p.end }));
+      return { byPeriod: by, extras, unmapped: extras.map(e => e.name), assumed, source: src.id };
+    };
+    let out = raw(sourceFor(id));
+    /* A schedule whose names map to no period is still shown as the sheet lists it (Assembly, Parade...), but only if some other
+       schedule does map: if NOTHING in the sheet maps, official timing is not used at all and classes keep their own times. */
+    if (out && !Object.keys(out.byPeriod).length && !bell.schedules.some(x => { const r = raw(x); return r && Object.keys(r.byPeriod).length; })) out = null;
+    timingMemo.set(id, out);
+    return out;
+  }
+
   const api = {
     url: URL_SOURCE, tz: TZ, BUILTIN, WEEK,
     get schedules() { return bell.schedules; }, get weeklySchedule() { return bell.weeklySchedule; }, get status() { return bell.status; }, get warnings() { return bell.warnings; }, get rows() { return bell.rows; },
     schoolParts, addDays, weekdayOf, isKey,
+    PERIODS, isPeriod, periodLabel, periodIdFromName, timing, slug,
     parseSchedules, normalizeConfig,
     rotationFor, resolve, nameOf, periodsOf, schedule: byId, isValid: valid,
     refresh, maybeRefresh,

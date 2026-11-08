@@ -322,9 +322,20 @@
                             <input type="text" id="schedule-room" maxlength="20" placeholder=" ">
                         </label>
 
-                        <label>Bell period <small>(optional)</small>
-                            <input type="text" id="schedule-period" maxlength="30" list="bell-period-names" placeholder=" ">
-                            <datalist id="bell-period-names"></datalist>
+                        <label>Period
+                            <select id="schedule-period" required>
+                                <option value="" disabled selected>Choose a period</option>
+                                <option value="before">Before School</option>
+                                <option value="advisory">Advisory</option>
+                                <option value="p1">1st Period</option>
+                                <option value="p2">2nd Period</option>
+                                <option value="p3">3rd Period</option>
+                                <option value="p4">4th Period</option>
+                                <option value="p5">5th Period</option>
+                                <option value="p6">6th Period</option>
+                                <option value="p7">7th Period</option>
+                                <option value="after">After School</option>
+                            </select>
                         </label>
 
                         <label>Meets on

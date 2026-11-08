@@ -1187,7 +1187,7 @@ function builderSide() {
 
     + (L.length ? stats('Schedule Stats', rows) : '')
 
-    + sec('Controls', `<p class="side-note">View</p>${seg('view', [['week', 'Week'], ['day', 'Day'], ['list', 'List']], SB.view)}<p class="side-note">Bell schedule</p>${seg('bell', [['normal', 'Regular'], ['hour', '1-hour'], ['dayoff', 'Day off']], bellMode)}<p class="side-note">Day</p><div class="side-days">${DAYS.map(d => `<button type="button" class="${d === SB.day ? 'on' : ''}" data-sb="day|${d}" aria-label="${d}" title="${d}">${d[0]}</button>`).join('')}</div>`)
+    + sec('Controls', `<p class="side-note">View</p>${seg('view', [['week', 'Week'], ['day', 'Day'], ['list', 'List']], SB.view)}<p class="side-note">Bell schedule</p>${seg('bell', [['normal', 'Regular'], ['hour', '1-hour'], ['dayoff', 'Day off']], viewSchedule())}<p class="side-note">Day</p><div class="side-days">${DAYS.map(d => `<button type="button" class="${d === SB.day ? 'on' : ''}" data-sb="day|${d}" aria-label="${d}" title="${d}">${d[0]}</button>`).join('')}</div>`)
 
     + actions([['Class', 'add:'], ['Event', 'add:Event: '], ['Study session', 'add:Study session: '], ['Activity', 'add:Activity: ']])
 

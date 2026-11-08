@@ -33,13 +33,20 @@ function loadData() {
     return {
         classes: arr(s.classes),
         tasks: arr(s.tasks),
-        schedule: arr(s.schedule).map(c => ({ ...c, teacher: String(c.teacher ?? "").trim(), room: String(c.room ?? "").trim(), period: String(c.period ?? "").trim(), rotation: c.rotation === "A" || c.rotation === "B" ? c.rotation : "" })),
+        /* Every field of a saved class survives (`...c`). periodId is absent until the migration places the class; "" means "no period" */
+        schedule: arr(s.schedule).filter(c => c && typeof c === "object").map(c => {
+            const x = { ...c, days: arr(c.days), teacher: String(c.teacher ?? "").trim(), room: String(c.room ?? "").trim(), period: String(c.period ?? "").trim(), rotation: c.rotation === "A" || c.rotation === "B" ? c.rotation : "" };
+            if (c.periodId === "" || PSI_BELL.isPeriod(c.periodId)) x.periodId = c.periodId; else delete x.periodId;
+            return x;
+        }),
         homework: arr(s.homework).map(h => ({
             ...h,
             density: DENSITIES.includes(h.density) ? h.density : "moderate",
             type: TYPES.includes(h.type) ? h.type : "assignment"
         })),
         bellMode: BELL_MODES.includes(s.bellMode) ? s.bellMode : "normal",
+        sched: { version: Number.isInteger(s.sched?.version) ? s.sched.version : 0, migratedAt: str(s.sched?.migratedAt) || "", mapped: num(s.sched?.mapped) ?? 0, extra: num(s.sched?.extra) ?? 0, pending: num(s.sched?.pending) ?? 0, backup: Boolean(s.sched?.backup),
+            review: arr(s.sched?.review).filter(r => r && typeof r === "object" && "id" in r).map(r => ({ id: r.id, name: String(r.name ?? ""), reason: String(r.reason ?? "") })) },   // what the periods migration did, and what it left for review
         bell: PSI_BELL.normalizeConfig(s.bell),   // A/B rotation, non-school dates, date overrides: the person's own data, apart from the imported sheet
         gpaHidden: Boolean(s.gpaHidden),
         sat: { math: num(s.sat?.math), reading: num(s.sat?.reading) },
@@ -519,35 +526,120 @@ const viewSchedule = () => previewSchedule && PSI_BELL.isValid(previewSchedule) 
 
 /* A class tied to an A/B day only meets on that letter (when the date's letter is known) */
 const rotationOk = (c, letter) => !c.rotation || !letter || c.rotation === letter;
-/* "Period 3", "3rd period", "Pd 3" and "3" all name the same period */
-const periodKey = s => String(s || "").toLowerCase().replace(/\b(period|per|pd|block)\b/g, "").replace(/(\d+)(st|nd|rd|th)\b/g, "$1").replace(/[^a-z0-9]/g, "");
-const samePeriod = (a, b) => periodKey(a) !== "" && periodKey(a) === periodKey(b);
 
-/* Times a class uses in a built-in schedule; null if it doesn't meet in it (Day Off only) */
+/* ---------- Periods: WHEN comes from the official sheet, WHAT comes from the person's classes ----------
+   Every class has a `periodId` (before, advisory, p1..p7, after). The sheet decides when a period happens on a given schedule;
+   the class only says which period it belongs to, plus its teacher, room and the rest. Stored classes are never rewritten
+   to match the sheet: the day is assembled from both at display time (dayModel), and the timer reads that same model. */
+const REGULAR = ["advisory", "p1", "p2", "p3", "p4", "p5", "p6", "p7"];
+const EXTRA_PREFIX = /^\s*(event|study session|activity)\s*:/i;   // the Builder's quick-add buttons: not school classes
+const toSec = t => typeof t === "string" && /^\d{1,2}:\d{2}$/.test(t) ? timeToSeconds(t) : NaN;
+const isExtra = c => c.periodId === "" && !!c.kind;
+
+/* Times a class uses in a built-in schedule when the sheet gives none; null if it doesn't meet in it (Day Off only) */
 function timesFor(c, id = viewSchedule()) {
     if (id === "dayoff") return c.dayOffAffected ? { start: c.dayOffStart, end: c.dayOffEnd } : null;
     if (id === "hour" && c.bellAffected) return { start: c.bellStart, end: c.bellEnd };
     return { start: c.start, end: c.end };
 }
-/* What happens on a weekday under one schedule: [{ name, teacher, room, startTime, endTime }].
-   Imported schedule: the official periods, each named after the person's class linked to that period (else the period's own name).
-   Built-in schedule: the person's classes with the times set for that schedule. */
-function scheduleEntries(dayName, id, letter) {
-    const periods = PSI_BELL.periodsOf(id);
-    const mine = c => c.days.includes(dayName) && rotationOk(c, letter);
-    if (periods) {
-        return periods.map(p => {
-            const c = customSchedule.find(c => c.period && samePeriod(c.period, p.name) && mine(c));
-            return { name: c ? c.name : p.name, teacher: c?.teacher || "", room: c?.room || "", period: p.name, startTime: p.start, endTime: p.end };
-        });
+
+/* The day under one schedule: { groups, timeline }.
+   groups:   Before School (by start time) -> Advisory -> 1st..7th Period (fixed order) -> Unassigned -> After School (by start time).
+             A period with official timing is always kept, empty or not; one without timing appears only if it has classes.
+   timeline: every timed entry in time order: what the timer counts through. An empty official period is an entry too (`empty`). */
+function dayModel(dayName, id, letter) {
+    const T = PSI_BELL.timing(id);
+    const cls = customSchedule.filter(c => Array.isArray(c.days) && c.days.includes(dayName) && rotationOk(c, letter));
+    const mk = (c, start, end, extra) => ({ id: c.id, name: c.name, teacher: c.teacher || "", room: c.room || "", startTime: start, endTime: end, start: toSec(start), end: toSec(end), ...extra });
+    const ok = e => Number.isFinite(e.start) && Number.isFinite(e.end) && e.end > e.start;
+    const own = c => mk(c, c.start, c.end);
+    const edge = pid => cls.filter(c => c.periodId === pid).map(own).filter(ok).sort((a, b) => a.start - b.start || a.end - b.end);
+    const groups = [], before = edge("before"), after = edge("after");
+    if (before.length) groups.push({ id: "before", label: "Before School", items: before, timed: true });
+
+    for (const pid of REGULAR) {
+        const label = PSI_BELL.periodLabel(pid), mine = cls.filter(c => c.periodId === pid), t = T && T.byPeriod[pid];
+        if (T) {
+            if (!t) continue;   // this schedule has no such period today (a classes stays stored, it just doesn't meet)
+            const items = mine.map(c => mk(c, t.start, t.end, { period: label }));
+            groups.push({ id: pid, label, start: t.start, end: t.end, official: true, items, gap: items.length ? null : mk({ id: `gap:${pid}`, name: label }, t.start, t.end, { empty: true, period: label }), timed: true });
+        } else {
+            const items = mine.map(c => { const x = timesFor(c, id); return x && mk(c, x.start, x.end, { period: label }); }).filter(Boolean).filter(ok);
+            if (items.length) groups.push({ id: pid, label, start: items.reduce((a, e) => Math.min(a, e.start), 1e9), items, timed: true });
+        }
     }
-    return customSchedule.filter(mine).map(c => {
-        const t = timesFor(c, id);
-        return t && { name: c.name, teacher: c.teacher || "", room: c.room || "", startTime: t.start, endTime: t.end };
-    }).filter(Boolean);
+    // Periods the sheet lists that aren't one of the fixed periods (Lunch, Assembly...): shown as the sheet gives them, with no class
+    for (const x of T?.extras || []) groups.push({ id: `sheet:${x.name}`, label: x.name, start: x.start, end: x.end, official: true, items: [], gap: mk({ id: `gap:${x.name}`, name: x.name }, x.start, x.end, { empty: true, period: x.name }), timed: true });
+    if (T?.extras?.length) groups.sort((a, b) => a.id === "before" || b.id === "after" ? -1 : b.id === "before" || a.id === "after" ? 1 : toSec(a.start) - toSec(b.start));
+    // Classes the migration hasn't placed yet (no sheet yet): shown by their own times, exactly as before
+    for (const c of cls.filter(c => c.periodId === undefined)) {
+        const x = timesFor(c, id), e = x && mk(c, x.start, x.end);
+        if (e && ok(e)) groups.push({ id: `legacy:${c.id}`, label: "", items: [e], timed: true });
+    }
+    const loose = cls.filter(c => c.periodId === "" && !c.kind).map(own).filter(ok);
+    if (loose.length) groups.push({ id: "unassigned", label: "Unassigned", items: loose, timed: false });
+    if (after.length) groups.push({ id: "after", label: "After School", items: after, timed: true });
+
+    const timeline = groups.filter(g => g.timed).flatMap(g => g.items.length ? g.items : g.gap ? [g.gap] : []).sort((a, b) => a.start - b.start || a.end - b.end);
+    return { groups, timeline };
 }
+/* Real classes only, with the times the schedule gives them (the Builder preview uses this) */
+function scheduleEntries(dayName, id, letter) { return dayModel(dayName, id, letter).timeline.filter(e => !e.empty); }
 /* The schedule page / builder preview: whatever is being viewed (no date, so no A/B filter) */
 function getEffectiveSchedule(dayName) { return scheduleEntries(dayName, viewSchedule(), null); }
+
+/* ---------- Moving existing classes into periods (versioned, idempotent) ----------
+   Only entries that have no `periodId` yet are looked at, so running it again never touches a class that was already placed,
+   and never overwrites a later choice by the person. Nothing is deleted or rewritten: a class only gains `periodId`
+   (and `kind` for the Builder's Event / Study session / Activity entries). The stored string from before the first run is kept
+   under BACKUP_KEY. What can't be placed with confidence is flagged (periodId "") for review instead of being guessed. */
+const BACKUP_KEY = `${STORAGE_KEY}.before-periods`;
+function legacyPeriod(c, ctx) {
+    const kind = String(c.name || "").match(EXTRA_PREFIX);
+    if (kind) return { kind: kind[1].toLowerCase().replace(/\s+/g, "-") };
+    const named = PSI_BELL.periodIdFromName(c.period);   // the "Bell period" text from the previous version
+    if (named) return { periodId: named, how: "period field" };
+    if (/^\s*(advisory|homeroom)\b/i.test(c.name)) return { periodId: "advisory", how: "name" };
+    if (!ctx.ready) return { defer: true };               // times can only be read against the sheet
+    const s = toSec(c.start), e = toSec(c.end);
+    if (!(e > s)) return { review: "Its start and end times are missing or invalid." };
+    for (const tol of [0, 300]) for (const tables of [ctx.normal, ctx.all]) {
+        const hits = new Set();
+        for (const t of tables) for (const pid of REGULAR) { const p = t[pid]; if (p && Math.abs(toSec(p.start) - s) <= tol && Math.abs(toSec(p.end) - e) <= tol) hits.add(pid); }
+        if (hits.size === 1) return { periodId: [...hits][0], how: tol ? "times (within 5 min)" : "times" };
+        if (hits.size > 1) return { review: "Its times fit more than one period." };
+    }
+    const weekend = c.days?.length && c.days.every(d => d === "Saturday" || d === "Sunday");
+    if (!weekend) {
+        if (e <= ctx.first && s >= 5 * 3600) return { periodId: "before", how: "times" };
+        if (s >= ctx.last && s < 19 * 3600) return { periodId: "after", how: "times" };
+    }
+    return { review: "Its times don't match any period." };
+}
+function migrateToPeriods() {
+    const todo = customSchedule.filter(c => c.periodId === undefined);
+    if (!todo.length) { if (data.sched.version < 2) { data.sched = { ...data.sched, version: 2, migratedAt: data.sched.migratedAt || new Date().toISOString() }; saveData(); } return false; }
+    const tables = PSI_BELL.schedules.map(s => PSI_BELL.timing(s.id)).filter(Boolean).map(t => t.byPeriod);
+    const normal = PSI_BELL.timing("normal")?.byPeriod, ref = normal ? [normal] : tables;
+    const all = ref.flatMap(t => REGULAR.map(p => t[p]).filter(Boolean));
+    const ctx = { ready: tables.length > 0, normal: normal ? [normal] : [], all: tables,
+        first: Math.min(...all.map(p => toSec(p.start)), 1e9), last: Math.max(...all.map(p => toSec(p.end)), -1) };
+    const decided = todo.map(c => [c, legacyPeriod(c, ctx)]);
+    if (decided.every(([, d]) => d.defer)) return false;
+    try { if (localStorage.getItem(STORAGE_KEY) !== null && localStorage.getItem(BACKUP_KEY) === null) localStorage.setItem(BACKUP_KEY, localStorage.getItem(STORAGE_KEY)); } catch { /* storage unavailable: nothing to protect */ }
+    const log = { mapped: 0, extra: 0, pending: 0 }, review = data.sched.review.filter(r => customSchedule.some(c => c.id === r.id && c.periodId === ""));
+    for (const [c, d] of decided) {
+        if (d.defer) { log.pending++; continue; }
+        if (d.kind) { c.periodId = ""; c.kind = d.kind; log.extra++; }
+        else if (d.periodId) { c.periodId = d.periodId; log.mapped++; }
+        else { c.periodId = ""; review.push({ id: c.id, name: c.name, reason: d.review }); }
+    }
+    data.sched = { version: log.pending ? data.sched.version : 2, migratedAt: new Date().toISOString(), mapped: (data.sched.mapped || 0) + log.mapped, extra: (data.sched.extra || 0) + log.extra, review, pending: log.pending, backup: (() => { try { return localStorage.getItem(BACKUP_KEY) !== null; } catch { return false; } })() };
+    saveSchedule();   // saves `data` whole, so the new `sched` record goes with it
+    return true;
+}
+migrateToPeriods();
+window.addEventListener("psi:bell-updated", () => { if (migrateToPeriods()) { renderSavedSchedule(); populateHomeworkClasses(); updateTimeRemaining(); } });   // the once-a-second tick picks up everything else
 
 /* Schedule state: the single source of truth for "what class is it?".
    The schedule list, the dashboard Up Next card, the browser-tab title and the overview stat all read this object,
@@ -562,14 +654,11 @@ function getScheduleState(date = new Date()) {
     const sp = PSI_BELL.schoolParts(date), nowSec = sp.sec;
     const dayAt = key => {
         const r = activeFor(key);
-        const list = r.id ? scheduleEntries(PSI_BELL.weekdayOf(key), r.id, r.letter)
-            .map(c => ({ ...c, start: timeToSeconds(c.startTime), end: timeToSeconds(c.endTime) }))
-            .filter(c => Number.isFinite(c.start) && Number.isFinite(c.end) && c.end > c.start)
-            .sort((a, b) => a.start - b.start) : [];
-        return { r, list };
+        const model = r.id ? dayModel(PSI_BELL.weekdayOf(key), r.id, r.letter) : { groups: [], timeline: [] };
+        return { r, list: model.timeline, groups: model.groups };
     };
-    const { r, list: today } = dayAt(sp.key);
-    const state = { status: "", now: nowSec, dateKey: sp.key, weekday: sp.weekday, today, current: null, next: null, left: 0, toNext: 0, later: null,
+    const { r, list: today, groups } = dayAt(sp.key);
+    const state = { status: "", now: nowSec, dateKey: sp.key, weekday: sp.weekday, today, groups, current: null, next: null, left: 0, toNext: 0, later: null,
         schedule: { id: r.id, name: r.id ? PSI_BELL.nameOf(r.id) : r.label || "No school", source: r.source, letter: r.letter, closed: r.closed, label: r.label } };
 
     state.current = today.find(c => nowSec >= c.start && nowSec < c.end) || null;
@@ -614,6 +703,7 @@ function setBellMode(id) {
     previewSchedule = PSI_BELL.isValid(id) && id !== "none" ? id : "normal";
     syncModeButtons();
     renderSavedSchedule();
+    updateTimeRemaining();
     window.onBellModeChange?.();
     window.dispatchEvent(new CustomEvent("psi:preview-changed"));
 }
@@ -639,7 +729,20 @@ function clearScheduleForm() {
     byId("schedule-form").reset();
     toggleBellSettings();
     toggleDayOffSettings();
+    syncPeriodForm();
 }
+/* Regular periods take their times from the bell schedule, so the time controls only appear for Before / After School */
+const periodOptions = (selected, blank) => `${blank ? `<option value=""${selected === "" ? " selected" : ""}>${blank}</option>` : ""}${PSI_BELL.PERIODS.map(p => `<option value="${p.id}"${selected === p.id ? " selected" : ""}>${p.label}</option>`).join("")}`;
+function syncPeriodForm() {
+    const sel = byId("schedule-period"); if (!sel) return;
+    const edge = sel.value === "before" || sel.value === "after";
+    for (const id of ["schedule-start", "schedule-end", "bell-affected", "dayoff-affected"]) { const el = byId(id); if (el) el.closest("label").hidden = !edge; }
+    for (const id of ["bell-settings", "dayoff-settings"]) { const el = byId(id); if (el) el.hidden = !edge; }
+    byId("schedule-start").required = byId("schedule-end").required = edge;
+    if (!edge) { byId("bell-affected").value = "no"; if (byId("dayoff-affected")) byId("dayoff-affected").value = "no"; }
+}
+byId("schedule-period")?.addEventListener("change", syncPeriodForm);
+syncPeriodForm(); window.addEventListener("load", syncPeriodForm);   // v3.js adds the Day Off controls after this file runs
 
 function renderSavedSchedule() {
     const box = byId("saved-schedule-list");
@@ -647,11 +750,24 @@ function renderSavedSchedule() {
     if (!customSchedule.length) {
         box.innerHTML = '<div class="schedule-empty">No classes added yet. Your schedule is a clean slate.</div>';
     }
+    const normal = PSI_BELL.timing("normal");
     customSchedule.forEach(course => {
-        const t = timesFor(course) || { start: course.start, end: course.end };
+        const pid = course.periodId, regular = REGULAR.includes(pid), t = timesFor(course, "normal") || { start: course.start, end: course.end };
+        const official = regular && normal?.byPeriod[pid];
+        const when = official ? `${formatStoredTime(official.start)}–${formatStoredTime(official.end)}` : t.start && t.end ? `${formatStoredTime(t.start)}–${formatStoredTime(t.end)}` : "";
+        const note = pid === undefined || (pid === "" && !course.kind) ? "Needs a period" : "";
         const row = document.createElement("div");
         row.className = "saved-class";
-        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${classMeta(course) ? `<small class="schedule-teacher">${escapeHtml(classMeta(course))}</small>` : ""}<small>${course.days.join(", ")} · ${formatStoredTime(t.start)}–${formatStoredTime(t.end)}${course.bellAffected ? " · Bell-specific" : ""}${course.dayOffAffected ? " · Day off" : ""}${course.period ? ` · ${escapeHtml(course.period)}` : ""}${course.rotation ? ` · ${course.rotation}-Day` : ""}</small></div><button class="danger-button" type="button">Delete</button>`;
+        row.innerHTML = `<div><strong>${escapeHtml(course.name)}</strong>${classMeta(course) ? `<small class="schedule-teacher">${escapeHtml(classMeta(course))}</small>` : ""}<small>${[course.days.join(", "), when, course.rotation ? `${course.rotation}-Day` : "", note].filter(Boolean).join(" · ")}</small></div>
+            <div class="saved-actions"><select class="saved-period" aria-label="Period for ${escapeHtml(course.name)}">${periodOptions(pid ?? "", pid === undefined || pid === "" ? "No period" : "")}</select><button class="danger-button" type="button">Delete</button></div>`;
+        row.querySelector("select").addEventListener("change", e => {
+            // Assigning a period never touches anything else about the class. Before/After School keep the times already stored.
+            const v = e.target.value, c = customSchedule.find(x => x.id === course.id); if (!c) return;
+            if ((v === "before" || v === "after") && !(toSec(c.start) < toSec(c.end))) { alert("Before and After School classes need a start and end time. Add the class again with its times."); e.target.value = c.periodId ?? ""; return; }
+            c.periodId = v; if (v) delete c.kind;
+            data.sched.review = data.sched.review.filter(r => r.id !== c.id);
+            saveSchedule(); renderSavedSchedule(); updateTimeRemaining();
+        });
         row.querySelector("button").addEventListener("click", () => {
             customSchedule = customSchedule.filter(c => c.id !== course.id);
             saveSchedule();
@@ -668,17 +784,22 @@ byId("schedule-form").addEventListener("submit", event => {
     event.preventDefault();
     const v = id => byId(id).value;
     const days = [...document.querySelectorAll(".days-picker input:checked")].map(i => i.value);
-    const name = v("schedule-class-name").trim(), start = v("schedule-start"), end = v("schedule-end");
-    const bell = v("bell-affected") === "yes", off = v("dayoff-affected") === "yes";
+    const name = v("schedule-class-name").trim(), pid = v("schedule-period");
+    const edge = pid === "before" || pid === "after";
+    // A regular period's times come from the bell schedule; the stored copy is only a fallback for when no sheet has loaded
+    const off0 = PSI_BELL.timing("normal")?.byPeriod[pid];
+    const start = edge ? v("schedule-start") : off0?.start || "", end = edge ? v("schedule-end") : off0?.end || "";
+    const bell = edge && v("bell-affected") === "yes", off = edge && v("dayoff-affected") === "yes";
 
     if (!days.length) return alert("Select at least one day.");
     if (!name) return alert("Enter a class name.");
-    if (!start || !end || start >= end) return alert("The end time must be after the start time.");
+    if (!PSI_BELL.isPeriod(pid)) return alert("Choose a period.");
+    if (edge && (!start || !end || start >= end)) return alert("The end time must be after the start time.");
     if (bell && (!v("bell-start") || !v("bell-end") || v("bell-start") >= v("bell-end"))) return alert("Enter valid bell-specific start and end times.");
     if (off && (!v("dayoff-start") || !v("dayoff-end") || v("dayoff-start") >= v("dayoff-end"))) return alert("Enter valid Day Off start and end times.");
 
     customSchedule.push({
-        id: Date.now() + Math.random(), name, teacher: v("schedule-teacher").trim(), room: v("schedule-room").trim(), period: v("schedule-period").trim(), rotation: v("schedule-rotation"), days, start, end,
+        id: Date.now() + Math.random(), name, teacher: v("schedule-teacher").trim(), room: v("schedule-room").trim(), periodId: pid, rotation: v("schedule-rotation"), days, start, end,
         bellAffected: bell, bellStart: bell ? v("bell-start") : "", bellEnd: bell ? v("bell-end") : "",
         dayOffAffected: off, dayOffStart: off ? v("dayoff-start") : "", dayOffEnd: off ? v("dayoff-end") : ""
     });
@@ -691,23 +812,36 @@ byId("schedule-form").addEventListener("submit", event => {
 
 /* ---------- Today's classes + countdown ---------- */
 /* Runs once a second (the only schedule timer) and whenever the schedule or bell mode changes.
-   Everything time-related on screen is derived from one getScheduleState() call per tick. */
-let scheduleListHtml = "", lastActiveKey = "";
+   Everything time-related on screen is derived from one getScheduleState() call per tick. The list shows the schedule being
+   viewed (a preview if a tab other than today's is chosen); countdown text and highlighting only ever apply to today's real one. */
+let scheduleListHtml = "", scheduleRows = [], lastActiveKey = "";
 function updateTimeRemaining() {
     const state = getScheduleState();
     byId("day-name").textContent = `Class Schedule for ${state.weekday}`;
 
-    const remainingText = c => c === state.current ? `${formatRemaining(state.left)} remaining`
+    const viewId = viewSchedule(), src = id => PSI_BELL.timing(id)?.source || id;
+    const live = viewId === state.schedule.id || src(viewId) === src(state.schedule.id);   // "Normal Bell Page" and the sheet's Normal Day are the same schedule
+    const groups = live ? state.groups : dayModel(state.weekday, viewId, state.schedule.letter).groups;
+    const range = g => `${formatStoredTime(g.start)} – ${formatStoredTime(g.end)}`;
+    const row = (c, edge) => `<div class="schedule-item${live && c === state.current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${classMeta(c) ? `<small class="schedule-teacher">${escapeHtml(classMeta(c))}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining"></div></div>`;
+    const rows = [];
+    const html = groups.map(g => {
+        const cur = live && state.current && (g.items.includes(state.current) || g.gap === state.current);
+        const head = g.label ? `<div class="schedule-period${cur ? " is-current" : ""}"><span>${escapeHtml(g.label)}</span>${g.official ? `<span>${range(g)}</span>` : ""}</div>` : "";
+        const body = g.items.length ? g.items.map(c => { rows.push(c); return row(c); }).join("") : (rows.push(g.gap), '<div class="schedule-free"><span>No class</span><div class="schedule-remaining"></div></div>');
+        return `${g.id === "after" ? '<div class="schedule-divider" role="separator"></div>' : ""}<div class="schedule-group" data-period="${g.id}">${head}${body}</div>`;
+    }).join("") || '<div class="schedule-empty">No classes scheduled for today.</div>';
+
+    const remainingText = c => !live ? "" : c === state.current ? `${formatRemaining(state.left)} remaining`
+        : c.empty ? ""
         : state.now < c.start ? `${formatRemaining(c.start - state.now)} until start` : "Not in Session";
-    const html = state.today.length
-        ? state.today.map(c => `<div class="schedule-item${c === state.current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${classMeta(c) ? `<small class="schedule-teacher">${escapeHtml(classMeta(c))}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining"></div></div>`).join("")
-        : '<div class="schedule-empty">No classes scheduled for today.</div>';
     // Rebuild the rows only when their structure changes (a class starts/ends, or the schedule is edited).
     // The countdown text changes every second, so it is written in place, and only where it differs.
     const list = byId("class-list");
     if (html !== scheduleListHtml) { list.innerHTML = html; scheduleListHtml = html; }
+    scheduleRows = rows;
     list.querySelectorAll(".schedule-remaining").forEach((el, i) => {
-        const text = remainingText(state.today[i]);
+        const text = remainingText(scheduleRows[i]);
         if (el.textContent !== text) el.textContent = text;
     });
 

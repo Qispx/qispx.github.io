@@ -254,60 +254,31 @@
      imported sheet. All decisions are made in psi-bell.js / script.js; this is only the controls. */
   {
     const B = window.PSI_BELL, esc = escapeHtml;
-    const SRC = { override: 'set for this date', rotation: 'A/B rotation', weekday: 'the sheet’s default for this weekday', fallback: 'default' };
     const stamp = ms => ms ? new Date(ms).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'never';
     const opts = (sel, extra = '') => `${extra}<optgroup label="Your classes">${Object.entries(B.BUILTIN).map(([k, v]) => `<option value="${k}"${sel === k ? ' selected' : ''}>${v}</option>`).join('')}</optgroup>` +
       (B.schedules.length ? `<optgroup label="Official sheet">${B.schedules.map(s => `<option value="${esc(s.id)}"${sel === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</optgroup>` : '');
     const fmt12 = hm => { const [h, m] = hm.split(':').map(Number); return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; };
     const letterName = l => l ? `${l}-Day` : '';
 
-    // 1. Status line + "More schedules" + imported preview, under the tabs
+    // 1. "More schedules" select next to the tabs (imported schedules that have no tab). Previewing never changes today's schedule.
     const sw = $('#class-schedule .mode-switcher');
     if (sw) {
-      sw.insertAdjacentHTML('afterend', `<div class="bell-status" id="bell-status" aria-live="polite"></div>
-        <div class="bell-preview" id="bell-preview" hidden></div>`);
       sw.insertAdjacentHTML('beforeend', '<select class="bell-more" id="bell-more" aria-label="More schedules from the official sheet" hidden></select>');
       $('#bell-more').addEventListener('change', e => { if (e.target.value) setBellMode(e.target.value); });
-      $('#bell-status').addEventListener('click', e => { const b = e.target.closest('[data-bell-use]'); if (b) setDateOverride(todayKey(), b.dataset.bellUse); });
     }
     let lastStatus = '';
     const renderStatus = () => {
-      const el = $('#bell-status'); if (!el) return;
-      const st = getScheduleState(), a = st.schedule, view = viewSchedule(), previewing = view !== a.id;
-      const rows = previewing ? scheduleEntries(st.weekday, view, a.letter) : [];   // computed first so an edit to the classes redraws the strip
-      const key = [a.id, a.source, a.letter, a.label, view, st.dateKey, B.schedules.length, B.status.ok, JSON.stringify(rows)].join('|');
+      const more = $('#bell-more'); if (!more) return;
+      const a = activeFor(todayKey()), view = viewSchedule();
+      const key = [a.id, view, B.schedules.map(s => s.id).join(',')].join('|');
       if (key === lastStatus) return; lastStatus = key;
-      const why = a.closed ? (a.label || 'No school') : a.source === 'rotation' && a.letter ? `${letterName(a.letter)} rotation` : SRC[a.source];
-      el.innerHTML = `<span class="bell-today"><b>Today:</b> ${esc(a.name)} <small>· ${esc(why)}</small></span>` +
-        (previewing ? `<span class="bell-previewing">Previewing <b>${esc(PSI_BELL.nameOf(view))}</b> <button type="button" class="link-button" data-bell-use="${esc(view)}">Use for today</button></span>` : '') +
-        (a.source === 'override' ? `<button type="button" class="link-button" data-bell-use="">Remove today’s override</button>` : '');
-      // imported schedules that have no tab live in the select; its current value follows the preview
-      const more = $('#bell-more');
-      if (more) {
-        const extra = B.schedules;
-        more.hidden = !extra.length;
-        more.innerHTML = '<option value="">More schedules…</option>' + extra.map(s => `<option value="${esc(s.id)}"${view === s.id ? ' selected' : ''}>${esc(s.name)}${a.id === s.id ? ' · today' : ''}</option>`).join('');
-        more.classList.toggle('active', B.isValid(view) && !(view in B.BUILTIN));
-      }
-      // Whatever is previewed (and isn't already today's list) is shown as a compact strip: nothing here changes what is active.
-      const pv = $('#bell-preview');
-      if (pv) {
-        pv.hidden = !previewing;
-        if (previewing) {
-          pv.innerHTML = rows.length ? rows.map(p => `<span><b>${esc(p.name)}</b> ${fmt12(p.startTime)}–${fmt12(p.endTime)}</span>`).join('') : '<span>Nothing is in session on this schedule.</span>';
-        }
-      }
+      more.hidden = !B.schedules.length;
+      more.innerHTML = '<option value="">More schedules…</option>' + B.schedules.map(s => `<option value="${esc(s.id)}"${view === s.id ? ' selected' : ''}>${esc(s.name)}${a.id === s.id ? ' · today' : ''}</option>`).join('');
+      more.classList.toggle('active', B.isValid(view) && !(view in B.BUILTIN));
     };
     window.addEventListener('psi:schedule-tick', renderStatus);
     window.addEventListener('psi:preview-changed', renderStatus);
-    window.addEventListener('psi:bell-updated', () => { lastStatus = ''; renderStatus(); renderSettings(); fillPeriodNames(); });
-
-    // 2. Class form: suggestions for "Bell period"
-    function fillPeriodNames() {
-      const dl = $('#bell-period-names'); if (!dl) return;
-      const names = [...new Set(B.schedules.flatMap(s => s.periods.map(p => p.name)))];
-      dl.innerHTML = names.map(n => `<option value="${esc(n)}">`).join('');
-    }
+    window.addEventListener('psi:bell-updated', () => { lastStatus = ''; renderStatus(); renderSettings(); });
 
     // 3. Settings panel on the Schedule Builder page
     const editor = $('#schedule-editor');
@@ -321,11 +292,14 @@
       if (!panel) return;
       const open = new Set([...panel.querySelectorAll('details[open]')].map(d => d.dataset.k));
       const c = data.bell, st = B.status, today = todayKey(), rot = B.rotationFor(today);
+      // every distinct period name in the sheet, with the fixed period it currently maps to (the person's correction wins, else the name)
+      const eff = {}; B.schedules.forEach(x => { const t = B.timing(x.id); if (t) Object.values(t.byPeriod).forEach(v => { }); if (t) Object.entries(t.byPeriod).forEach(([pid, v]) => { if (!(v.name in eff)) eff[v.name] = pid; }); });
+      const pmap = [...new Set(B.schedules.flatMap(x => x.periods.map(p => p.name)))].map(n => [n, eff[n] || '']);
       const list = (items, empty) => items.length ? `<div class="bell-list">${items.join('')}</div>` : `<p class="bell-empty">${empty}</p>`;
       const row = (txt, attr) => `<div class="bell-row"><span>${txt}</span><button type="button" class="danger-button" ${attr}>Remove</button></div>`;
       const sheet = st.ok === false ? `<p class="bell-warn" role="status">Couldn’t reach the school’s sheet (${esc(st.error)}). ${B.schedules.length ? 'Showing the last copy that loaded.' : 'PSI is using your own classes until it loads.'}</p>`
         : st.ok ? `<p class="bell-ok">${B.schedules.length} schedules loaded · checked ${stamp(st.at)}${st.fromCache ? ' (saved copy)' : ''}${B.warnings.length ? ` · ${B.warnings.length} entr${B.warnings.length === 1 ? 'y' : 'ies'} skipped` : ''}</p>` : '<p class="bell-empty">Not loaded yet.</p>';
-      panel.innerHTML = `<div class="panel-heading"><div><h2 id="bell-official-h">Official Bell Schedule</h2><p class="bell-sub">PSI reads the Academy at Palumbo’s published bell sheet and picks today’s schedule for you.</p></div>
+      panel.innerHTML = `<div class="panel-heading"><div><h2 id="bell-official-h">Official Bell Schedule</h2></div>
         <button type="button" class="secondary-button" data-bell="refresh">Refresh now</button></div>
         <div id="bell-sheet-state">${sheet}</div>
         <details data-k="ab"${open.has('ab') ? ' open' : ''}><summary>A-Day and B-Day</summary>
@@ -350,6 +324,9 @@
           ${list(Object.entries(c.overrides).sort().map(([d, v]) => row(`${d} · ${esc(B.nameOf(v))}${B.isValid(v) ? '' : ' <small>(not in the sheet any more)</small>'}`, `data-bell="ov-del" data-d="${d}"`)), 'No special dates. Pick a date and a schedule, such as a parade day or an assembly.')}
           <div class="bell-fields"><label>Date<input type="date" data-bell-f="ov-d"></label><label>Schedule<select data-bell-f="ov-v">${opts('', '<option value="none">No school</option>')}</select></label>
             <button type="button" class="secondary-button" data-bell="ov-add">Add</button></div></details>
+        <details data-k="pm"${open.has('pm') ? ' open' : ''}><summary>Period times</summary>
+          ${B.schedules.length ? `<p class="bell-hint">Which of your periods each name in the sheet is. Your classes keep their period; only the times come from the sheet.</p>
+          <table class="bell-table"><caption class="sr-only">Sheet period names and the period each one is</caption><tbody>${pmap.map(([name, id]) => `<tr><th scope="row">${esc(name)}</th><td><select data-bell="pmap" data-n="${esc(B.slug(name))}" aria-label="Period for ${esc(name)}"><option value=""${id ? '' : ' selected'}>Not a class period</option>${B.PERIODS.filter(p => p.id !== 'before' && p.id !== 'after').map(p => `<option value="${p.id}"${id === p.id ? ' selected' : ''}>${p.label}</option>`).join('')}</select></td></tr>`).join('')}</tbody></table>` : '<p class="bell-empty">Appears once the sheet has loaded.</p>'}</details>
         <details data-k="src"${open.has('src') ? ' open' : ''}><summary>What the sheet says</summary>
           ${B.schedules.length ? `<table class="bell-table"><caption class="sr-only">Default schedule for each weekday</caption><tbody>${B.WEEK.map(d => `<tr><th scope="row">${d}</th><td>${esc(B.weeklySchedule[d] ? B.nameOf(B.weeklySchedule[d]) : 'None')}</td></tr>`).join('')}</tbody></table>
           <h3>All schedules</h3><div class="bell-list">${B.schedules.map(s => `<div class="bell-sched"><b>${esc(s.name)}</b><small>${s.periods.length ? s.periods.map(p => `${esc(p.name)} ${fmt12(p.start)}–${fmt12(p.end)}`).join(' · ') : 'No periods (no school)'}</small></div>`).join('')}</div>` : '<p class="bell-empty">Nothing loaded yet.</p>'}</details>
@@ -364,6 +341,7 @@
         if (k === 'ab-A' || k === 'ab-B') { c.ab[k.slice(3)] = e.target.value; save(); }
         else if (k === 'anchor-date') { c.rotation.anchor.date = B.isKey(e.target.value) ? e.target.value : ''; save(); }
         else if (k === 'anchor-letter') { c.rotation.anchor.letter = e.target.value === 'B' ? 'B' : 'A'; save(); }
+        else if (k === 'pmap') { panel.querySelectorAll('select[data-bell="pmap"]').forEach(x => { c.periodMap[x.dataset.n] = x.value; }); save(); }   /* the whole table is stored, so an automatic guess never half-applies */
         else if (k === 'fallback') { bellMode = e.target.value; data.bellMode = bellMode; save(); }
       });
       panel.addEventListener('click', e => {
@@ -379,7 +357,6 @@
       });
       renderSettings();
     }
-    fillPeriodNames();
     renderStatus();
   }
 })();

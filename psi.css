@@ -342,19 +342,10 @@ body.searching .dropdown-section:not(.expanded) .dropdown-body,body.searching .q
 .next-class{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--s4) var(--s6);border-left:4px solid var(--accent)}
 .next-class{transition:background-color var(--t),border-color var(--t)}
 .mode-button.is-today::after{content:"";display:inline-block;width:6px;height:6px;margin-left:8px;border-radius:50%;background:var(--accent-ink);vertical-align:middle}
-/* Official bell schedule: status line, imported-schedule preview, settings panel */
-.bell-status{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s2) var(--s4);font-size:var(--fs-sm);color:var(--text-2)}
-.bell-status:empty{display:none}
-.bell-status b{color:var(--text);font-weight:600}
-.bell-status small{color:var(--text-2);font-size:inherit}
-.bell-previewing{color:var(--text)}
-.link-button{padding:0;border:0;background:none;color:var(--accent-ink);font:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.link-button:hover{color:var(--text)}
+/* Official bell schedule: settings panel */
 .bell-more{min-height:38px;max-width:100%;padding:0 12px;border:1px solid var(--control);border-radius:var(--r-xs);background:var(--field);color:var(--text);font:inherit;font-size:var(--fs-sm)}
 .bell-more.active{background:var(--seg-on);color:var(--accent-ink);font-weight:600}
-.bell-preview{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);padding:var(--s3) var(--s4);border:1px solid var(--border);border-radius:var(--r-sm);background:var(--teal-surface);font-size:var(--fs-sm)}
-.bell-preview[hidden]{display:none}
-.bell-sub,.bell-hint,.bell-empty,.bell-ok{margin:var(--s2) 0 0;color:var(--text-2);font-size:var(--fs-sm)}
+.bell-hint,.bell-empty,.bell-ok{margin:var(--s2) 0 0;color:var(--text-2);font-size:var(--fs-sm)}
 .bell-warn{margin:var(--s3) 0 0;padding:var(--s3) var(--s4);border:1px solid var(--warn);border-radius:var(--r-sm);color:var(--text);font-size:var(--fs-sm)}
 .bell-panel details{margin-top:var(--s4);border-top:1px solid var(--border);padding-top:var(--s3)}
 .bell-panel summary{cursor:pointer;font-weight:600;padding:var(--s2) 0}
@@ -412,6 +403,15 @@ body.searching .dropdown-section:not(.expanded) .dropdown-body,body.searching .q
 .schedule-remaining strong,.schedule-item.current-class .schedule-remaining{color:var(--accent-ink)}
 .schedule-saved{margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--hair)}
 .saved-class{display:flex;align-items:center;justify-content:space-between;gap:var(--s4)}
+/* Schedule by period: a heading per period (name + official time), the person's classes under it; After School sits below a divider */
+.schedule-group+.schedule-group{margin-top:var(--s3)}
+.schedule-period{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s4);padding:var(--s2) 18px 2px;color:var(--text-2);font-size:var(--fs-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+.schedule-period.is-current{color:var(--accent-ink)}
+.schedule-period span+span{font-variant-numeric:tabular-nums;letter-spacing:0;text-transform:none;font-weight:500}
+.schedule-free{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(90px,.7fr) minmax(90px,.7fr) minmax(150px,1fr);gap:var(--s4);padding:10px 18px;color:var(--text-2);font-size:var(--fs-sm)}
+.schedule-divider{height:1px;margin:var(--s5) 18px var(--s3);background:var(--border-strong)}
+.saved-actions{display:flex;align-items:center;gap:var(--s2);flex-shrink:0}
+.saved-period{min-height:36px;max-width:150px;padding:0 10px;border:1px solid var(--control);border-radius:var(--r-xs);background:var(--field);color:var(--text);font:inherit;font-size:var(--fs-sm)}
 
 /* --- Tasks and homework --- */
 .task-panel{min-height:100%}
@@ -757,7 +757,11 @@ body.nav-collapsed .sidebar>:not(.sidebar-head){display:none!important}
   .editor-full,.bell-note{grid-column:auto}
   .ov-stats{grid-template-columns:1fr 1fr}
   .schedule-header{display:none}
-  .schedule-item{grid-template-columns:1fr 1fr}
+  .schedule-item,.schedule-free{grid-template-columns:1fr 1fr}
+  .schedule-period{padding-inline:14px}
+  .saved-class{flex-wrap:wrap}
+  .saved-actions{width:100%;justify-content:space-between}
+  .saved-period{max-width:none;flex:1}
   .schedule-class-name{grid-column:1/-1}
   .homework-item{grid-template-columns:1fr}
   .schedule-item,.homework-item,.priority-item,.task-item,.saved-class,.dl-row,.gym-wrow,.gym-chk{padding:12px 14px}
