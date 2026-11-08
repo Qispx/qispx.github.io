@@ -824,10 +824,15 @@ byId("schedule-form").addEventListener("submit", event => {
 /* Runs once a second (the only schedule timer) and whenever the schedule or bell mode changes.
    Everything time-related on screen is derived from one getScheduleState() call per tick. The list shows the schedule being
    viewed (a preview if a tab other than today's is chosen); countdown text and highlighting only ever apply to today's real one. */
-let scheduleListHtml = "", scheduleRows = [], lastActiveKey = "";
+let scheduleListHtml = "", scheduleRows = [], lastActiveKey = "", lastHeading = "";
 function updateTimeRemaining() {
     const state = getScheduleState();
-    byId("day-name").textContent = `Class Schedule for ${state.weekday}`;
+    const heading = `Class Schedule for ${state.weekday}`, letter = state.schedule.letter || "";
+    if (heading + letter !== lastHeading) {   // today's A/B letter rides along as a badge; the heading is rewritten only when it changes
+        lastHeading = heading + letter;
+        const h = byId("day-name"); h.textContent = heading;
+        if (letter) { const b = document.createElement("span"); b.className = "day-badge"; b.dataset.letter = letter; b.textContent = `${letter} Day`; b.setAttribute("aria-label", `Today is a ${letter} day`); h.append(" ", b); }
+    }
 
     const viewId = viewSchedule(), src = id => PSI_BELL.timing(id)?.source || id;
     const live = viewId === state.schedule.id || src(viewId) === src(state.schedule.id);   // "Normal Bell Page" and the sheet's Normal Day are the same schedule

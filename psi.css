@@ -404,6 +404,7 @@ body.searching .dropdown-section:not(.expanded) .dropdown-body,body.searching .q
 .schedule-saved{margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--hair)}
 .saved-class{display:flex;align-items:center;justify-content:space-between;gap:var(--s4)}
 /* Schedule by period: a heading per period (name + official time), the person's classes under it; After School sits below a divider */
+.day-badge{display:inline-flex;align-items:center;margin-left:var(--s2);padding:2px 12px;border-radius:999px;background:var(--accent-tint);color:var(--accent-ink);font-size:var(--fs-sm);font-weight:600;letter-spacing:.02em;vertical-align:middle;white-space:nowrap}
 .schedule-group+.schedule-group{margin-top:var(--s3)}
 .schedule-period{display:flex;justify-content:space-between;align-items:baseline;gap:var(--s4);padding:var(--s2) 18px 2px;color:var(--text-2);font-size:var(--fs-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
 .schedule-period.is-current{color:var(--accent-ink)}
