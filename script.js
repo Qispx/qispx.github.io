@@ -590,7 +590,10 @@ function dayModel(dayName, id, letter) {
     if (after.length) groups.push({ id: "after", label: "After School", items: after, timed: true });
 
     const timeline = groups.filter(g => g.timed).flatMap(g => g.items.length ? g.items : g.gap ? [g.gap] : []).sort((a, b) => a.start - b.start || a.end - b.end);
-    return { groups, timeline };
+    // Classes that meet this day but have no time on this schedule (e.g. regular classes while previewing Day Off). Never "free", just not timed here.
+    const shown = new Set(groups.flatMap(g => g.items.map(e => e.id)));
+    const skipped = cls.filter(c => !shown.has(c.id) && !c.kind).map(c => mk(c, "", ""));
+    return { groups, timeline, skipped };
 }
 /* Real classes only, with the times the schedule gives them (the Builder preview uses this) */
 function scheduleEntries(dayName, id, letter) { return dayModel(dayName, id, letter).timeline.filter(e => !e.empty); }
@@ -663,7 +666,7 @@ function getScheduleState(date = new Date()) {
     const sp = PSI_BELL.schoolParts(date), nowSec = sp.sec;
     const dayAt = key => {
         const r = activeFor(key);
-        const model = r.id ? dayModel(PSI_BELL.weekdayOf(key), r.id, r.letter) : { groups: [], timeline: [] };
+        const model = r.id ? dayModel(PSI_BELL.weekdayOf(key), r.id, r.letter) : { groups: [], timeline: [], skipped: [] };
         return { r, list: model.timeline, groups: model.groups };
     };
     const { r, list: today, groups } = dayAt(sp.key);
@@ -836,16 +839,23 @@ function updateTimeRemaining() {
 
     const viewId = viewSchedule(), src = id => PSI_BELL.timing(id)?.source || id;
     const live = viewId === state.schedule.id || src(viewId) === src(state.schedule.id);   // "Normal Bell Page" and the sheet's Normal Day are the same schedule
-    const groups = live ? state.groups : dayModel(state.weekday, viewId, state.schedule.letter).groups;
+    const model = live ? { groups: state.groups, skipped: [] } : dayModel(state.weekday, viewId, state.schedule.letter);
+    /* A preview only shows what the previewed schedule says: it never claims a period or a day is free, and classes it has no time for
+       are listed (untimed) rather than hidden. */
+    const groups = live ? model.groups : model.groups.filter(g => g.items.length || g.id.startsWith("sheet:"));
     const range = g => `${formatStoredTime(g.start)} – ${formatStoredTime(g.end)}`;
-    const row = (c, edge) => `<div class="schedule-item${live && c === state.current ? " current-class" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${classMeta(c) ? `<small class="schedule-teacher">${escapeHtml(classMeta(c))}</small>` : ""}</div><div class="schedule-time">${formatStoredTime(c.startTime)}</div><div class="schedule-time">${formatStoredTime(c.endTime)}</div><div class="schedule-remaining"></div></div>`;
+    const row = (c, untimed) => `<div class="schedule-item${live && c === state.current ? " current-class" : ""}${untimed ? " untimed" : ""}"><div class="schedule-class-name">${escapeHtml(c.name)}${classMeta(c) ? `<small class="schedule-teacher">${escapeHtml(classMeta(c))}</small>` : ""}</div><div class="schedule-time">${untimed ? "" : formatStoredTime(c.startTime)}</div><div class="schedule-time">${untimed ? "" : formatStoredTime(c.endTime)}</div><div class="schedule-remaining"></div></div>`;
     const rows = [];
-    const html = groups.map(g => {
+    let html = groups.map(g => {
         const cur = live && state.current && (g.items.includes(state.current) || g.gap === state.current);
         const head = g.label ? `<div class="schedule-period${cur ? " is-current" : ""}"><span>${escapeHtml(g.label)}</span>${g.official ? `<span>${range(g)}</span>` : ""}</div>` : "";
-        const body = g.items.length ? g.items.map(c => { rows.push(c); return row(c); }).join("") : (rows.push(g.gap), '<div class="schedule-free"><span>No class</span><div class="schedule-remaining"></div></div>');
+        const body = g.items.length ? g.items.map(c => { rows.push(c); return row(c); }).join("")
+            : g.id.startsWith("sheet:") ? (rows.push(g.gap), '<divclass="schedule-remaining"></div>')
+            : (rows.push(g.gap), '<div class="schedule-free"><span>No class</span><div class="schedule-remaining"></div></div>');
         return `${g.id === "after" ? '<div class="schedule-divider" role="separator"></div>' : ""}<div class="schedule-group" data-period="${g.id}">${head}${body}</div>`;
-    }).join("") || '<div class="schedule-empty">No classes scheduled for today.</div>';
+    }).join("");
+    if (model.skipped.length) html += `<div class="schedule-group" data-period="skipped"><div class="schedule-period"><span>Not on this schedule</span></div>${model.skipped.map(c => { rows.push(c); return row(c, true); }).join("")}</div>`;
+    if (!html) html = `<div class="schedule-empty">${live ? "No classes scheduled for today." : `Nothing set up for ${escapeHtml(PSI_BELL.nameOf(viewId) || "this schedule")} yet.`}</div>`;
 
     const remainingText = c => !live ? "" : c === state.current ? `${formatRemaining(state.left)} remaining`
         : c.empty ? ""
